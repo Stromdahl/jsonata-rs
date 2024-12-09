@@ -32,7 +32,7 @@ impl<Chars: Iterator<Item = char>> Lexer<Chars> {
                 c if operators.contains(&c)=> {
                     Ok(Token::Operator(c.to_string()))
                 }
-                
+
                 // string literals
                 '"' => {
                     let mut text = String::new();
@@ -48,7 +48,6 @@ impl<Chars: Iterator<Item = char>> Lexer<Chars> {
                     while let Some(c) = self.source.next_if(|&c| !operators.contains(&c)) {
                         text.push(c)
                     };
-
                     match text.as_str() {
                         "or" | "in" | "and" => todo!(),
                         "true" => todo!(),
@@ -82,7 +81,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn simple_expression() -> Result<()> {
+    fn test_lex_simple_expression() -> Result<()> {
         let expr = "$price.foo.bar";
         let lexer = Lexer::new(expr.chars().peekable());
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;

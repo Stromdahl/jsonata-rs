@@ -1,4 +1,8 @@
-mod lexer;
 mod error;
-pub use lexer::*;
-pub use error::*;
+pub use error::{Result, Error};
+
+mod lexer;
+pub use lexer::{Lexer, Token};
+
+mod parse;
+pub use parse::Parser;
