@@ -7,14 +7,21 @@ pub enum Token {
  Name(String),
 }
 
-pub struct Lexer<Chars: Iterator<Item = char>> {
-    pub source: std::iter::Peekable<Chars>,
+pub type Source<'a> =  std::iter::Peekable<std::str::Chars<'a>>;
+
+pub struct Lexer<'a> {
+    pub source: Source<'a>,
     pub posotion: u32,
 }
 
-impl<Chars: Iterator<Item = char>> Lexer<Chars> {
+impl<'a> Lexer<'a> {
 
-    pub fn new (source: std::iter::Peekable<Chars>) -> Self {
+    pub fn from_str(source: &'a str) -> Self {
+        let chars: Source<'a> = source.chars().peekable();
+        Lexer::new(chars)
+    }
+
+    pub fn new (source: Source<'a>) -> Self {
         Self {
             source,
             posotion: 0,
@@ -67,7 +74,7 @@ impl<Chars: Iterator<Item = char>> Lexer<Chars> {
     }
 }
 
-impl<Chars: Iterator<Item = char>> Iterator for Lexer<Chars> {
+impl<'a> Iterator for Lexer<'a> {
     type Item = Result<Token>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -82,8 +89,7 @@ mod tests {
 
     #[test]
     fn test_lex_simple_expression() -> Result<()> {
-        let expr = "$price.foo.bar";
-        let lexer = Lexer::new(expr.chars().peekable());
+        let lexer = Lexer::from_str("$price.foo.bar");
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;
         assert_eq!(tokens, [
             Token::Operator("$".into()),

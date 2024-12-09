@@ -1,8 +1,8 @@
 mod error;
 pub use error::{Result, Error};
 
-mod lexer;
-pub use lexer::{Lexer, Token};
+mod lex;
+pub use lex::{Lexer, Token};
 
 mod parse;
 pub use parse::Parser;
