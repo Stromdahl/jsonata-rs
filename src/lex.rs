@@ -2,9 +2,10 @@ use crate::Result;
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
- Operator(String),
- String(String),
- Name(String),
+ Operator(String), // todo use &str ?
+ String(String), // todo use &str ?
+ Name(String), // todo use &str ?
+ Number(f64), // This should be equal to javascript "Number" (IEEE 754-2019 binary64)
 }
 
 pub type Source<'a> =  std::iter::Peekable<std::str::Chars<'a>>;
@@ -16,6 +17,7 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
 
+    // todo impl std::str::FromStr
     pub fn from_str(source: &'a str) -> Self {
         let chars: Source<'a> = source.chars().peekable();
         Lexer::new(chars)
@@ -98,6 +100,21 @@ mod tests {
             Token::Name("foo".into()),
             Token::Operator(".".into()),
             Token::Name("bar".into())]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_lex_numeric_expression() -> Result<()> {
+        let lexer = Lexer::from_str("1 +2* 3");
+        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
+        assert_eq!(tokens, [
+            Token::Number(1.0),
+            Token::Operator("+".into()),
+            Token::Number(2.0),
+            Token::Operator("*".into()),
+            Token::Number(3.0),
+        ]
         );
         Ok(())
     }

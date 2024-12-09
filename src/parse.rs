@@ -1,5 +1,8 @@
 use crate::Token;
-use crate::Result;
+
+// https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
+
+
 
 pub struct Parser<Tokens: Iterator<Item = Token>> {
     pub tokens: std::iter::Peekable<Tokens>,
@@ -16,6 +19,8 @@ impl<Tokens: Iterator<Item = Token>> Parser<Tokens> {
     }
 }
 
+
+
 // impl Parser<I: Iterator<Item = Token>> {
 //     pub fn new (tokens: &dyn std::iter::Iterator<Item = crate::Token>) -> Self {
 //         Self {
@@ -26,10 +31,12 @@ impl<Tokens: Iterator<Item = Token>> Parser<Tokens> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::Lexer;
+    use crate::Result;
 
     #[test]
     fn test_parse_simple () -> Result<()> {
+        let lexer = Lexer::from_str("1");
         todo!()
     }
 }
