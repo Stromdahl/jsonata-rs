@@ -5,4 +5,3 @@ mod lex;
 pub use lex::{Lexer, Token};
 
 mod parse;
-pub use parse::Parser;

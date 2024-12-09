@@ -4,9 +4,9 @@ use crate::{Error, Result};
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
- Operator(String), // todo use &str ?
+ Operator(String), // todo use enum Operator?
  String(String), // todo use &str ?
- Name(String), // todo use &str ?
+ Name(String), // todo use enum Name?
  Number(f64), // This should be equal to javascript "Number" (IEEE 754-2019 binary64)
 }
 
@@ -64,7 +64,9 @@ impl<'a> Lexer<'a> {
                 }
 
                 // numeric literals
-                // TODO: Propberbly not compaitble with the js jsonata implementation
+                // TODO: This is a placeholder implementation of numeric literal
+                // It's problerbly not compatible with the javascript implementation
+                // Needs tests to make sure
                 '0'..='9' => {
                     let mut text = String::from(c);
                     while let Some(x) = self.source.next_if(|&x| x.is_numeric()) {
