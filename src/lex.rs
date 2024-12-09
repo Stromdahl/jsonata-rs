@@ -1,4 +1,6 @@
-use crate::Result;
+use core::f64;
+
+use crate::{Error, Result};
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
@@ -30,12 +32,22 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    fn trim_while<F>(&mut self, f: F)
+    where
+        F: FnOnce(&char) -> bool + Copy,
+    {
+        while self.source.next_if(f).is_some() {}
+    }
+
     fn next_token(&mut self) -> Option<Result<Token>> {
         let operators = [
             '$',
-            '.'
+            '.',
+            '+',
+            '*',
         ];
         let token = if let Some(c) = self.source.next() {
+            self.trim_while(|x| x.is_whitespace());
             match c {
                 // single char operators
                 c if operators.contains(&c)=> {
@@ -51,8 +63,33 @@ impl<'a> Lexer<'a> {
                     Ok(Token::String(text))
                 }
 
+                // numeric literals
+                // TODO: Propberbly not compaitble with the js jsonata implementation
+                '0'..='9' => {
+                    let mut text = String::from(c);
+                    while let Some(x) = self.source.next_if(|&x| x.is_numeric()) {
+                        text.push(x)
+                    }
+
+                    if let Some(x) = self.source.next_if(|&x| x == '.') {
+                        if let Some(&y) = self.source.peek() {
+                            if y.is_numeric() {
+                                text.push(x);
+                            }
+
+                            while let Some(x) = self.source.next_if(|&x| x.is_numeric()) {
+                                text.push(x)
+                            }
+                        }
+                    }
+                    match text.parse() {
+                        Ok(literal) => Ok(Token::Number(literal)),
+                        Err(_) => Err(Error::S0102)
+                    }
+                }
+
                 // names
-                c => {
+                _ => {
                     let mut text = String::from(c);
                     while let Some(c) = self.source.next_if(|&c| !operators.contains(&c)) {
                         text.push(c)
