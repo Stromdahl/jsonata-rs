@@ -1,3 +1,4 @@
+
 use crate::{Error, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -8,10 +9,21 @@ pub enum Operator {
     Dot,
 }
 
+impl std::fmt::Display for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operator::Plus => write!(f, "+"),
+            Operator::Star => write!(f, "*"),
+            Operator::Dollar => write!(f, "$"),
+            Operator::Dot => write!(f, "."),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token<'a> {
  Operator(Operator), // todo use enum Operator?
- String(&'a str), // todo use &str ?
+ String(&'a str),
  Name(&'a str), // todo use enum Name?
  Number(f64), // This should be equal to javascript "Number" (IEEE 754-2019 binary64)
 }
@@ -148,7 +160,18 @@ impl<'a> Iterator for Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Lexer, Operator, Result, Token};
+
+    #[test]
+    fn test_lex_single_number() -> Result<()> {
+        let lexer = Lexer::new("1");
+        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
+        assert_eq!(tokens, [
+            Token::Number(1.0)
+        ]);
+        Ok(())
+    }
+
 
     #[test]
     fn test_lex_simple_expression() -> Result<()> {
@@ -176,19 +199,6 @@ mod tests {
         Ok(())
     }
 
-    #[ignore = "Until deciaml support implementation"]
-    #[test]
-    fn test_lex_numeric_decimal() -> Result<()> {
-        let lexer = Lexer::new("1.1 2.2 3");
-        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
-        assert_eq!(tokens, [
-            Token::Number(1.1),
-            Token::Number(2.2),
-            Token::Number(3.0),
-        ]);
-        Ok(())
-    }
-
     #[test]
     fn test_lex_numeric_expression() -> Result<()> {
         let lexer = Lexer::new("1 +2* 3 ");
@@ -202,4 +212,31 @@ mod tests {
         ]);
         Ok(())
     }
+
+    #[ignore = "Deciaml support not implementet yet"]
+    #[test]
+    fn test_lex_numeric_decimal() -> Result<()> {
+        let lexer = Lexer::new("1.1 2.2 3");
+        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
+        assert_eq!(tokens, [
+            Token::Number(1.1),
+            Token::Number(2.2),
+            Token::Number(3.0),
+        ]);
+        Ok(())
+    }
+
+    #[ignore = "Exponential support not implementet yet"]
+    #[test]
+    fn test_lex_numeric_exponentail() -> Result<()> {
+        // JS: Number.parseFloat(123000).toExponential(2) -> "23e+5"
+        let lexer = Lexer::new("23e+5");
+        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
+        assert_eq!(tokens, [
+            Token::Number(123000.0),
+        ]);
+        Ok(())
+    }
+
+
 }

@@ -2,7 +2,7 @@
 // pub type Error = Box<dyn std::error::Error>;
 
 // TODO: user "thiserror"?
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Error {
     S0102, // Number out of range: {{token}}
 }

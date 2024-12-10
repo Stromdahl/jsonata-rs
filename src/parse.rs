@@ -26,7 +26,7 @@ impl std::fmt::Display for Atom {
 // https://en.wikipedia.org/wiki/S-expression
 pub enum S {
     Atom(Atom),
-    Cons(char, Vec<S>),
+    Cons(Operator, Vec<S>),
 }
 
 impl std::fmt::Display for S {
@@ -45,7 +45,7 @@ impl std::fmt::Display for S {
 }
 
 
-fn infix_binding_power(op: Operator) -> (u8, u8) {
+fn infix_binding_power(op: &Operator) -> (u8, u8) {
     match op {
         Operator::Plus => (1, 2),
         Operator::Star => (3, 4),
@@ -53,35 +53,38 @@ fn infix_binding_power(op: Operator) -> (u8, u8) {
     }
 }
 
-fn expr_bp(mut lexer: Lexer, min_bp: u8) -> Result<S> {
+fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> Result<S> {
      let lhs = match lexer.next() {
         Some(token) => token?,
         None => return Ok(S::Atom(Atom::End)),
     };
 
-    let lhs = match lhs {
+    let mut lhs = match lhs {
         Token::Number(n) => S::Atom(Atom::Number(n)),
         t => todo!("{t:?}")
     };
 
     loop {
         let op = match lexer.peek() {
-            Some(Ok(Token::Operator(op))) => op,
-            Some(Err(e)) => return Err(e),
+            Some(Ok(Token::Operator(op))) => *op,
+            Some(Err(e)) => return Err(e.clone()),
+            None => break,
             t => panic!("bad token: {:?}", t),
         };
-        let (l_bp, r_bp) = infix_binding_power(op);
+        let (l_bp, r_bp) = infix_binding_power(&op);
         if l_bp < min_bp {
             break;
         }
-        todo!()
+        lexer.next();
+        let rhs = expr_bp(lexer, r_bp)?;
+        lhs = S::Cons(op, vec![lhs, rhs])
     }
 
     Ok(lhs)
 }
 
-fn expr(lexer: Lexer<'_>) -> Result<S> {
-    expr_bp(lexer)
+fn expr(lexer: &mut Lexer<'_>) -> Result<S> {
+    expr_bp(lexer, 0)
 }
 
 #[cfg(test)]
@@ -94,7 +97,7 @@ mod tests {
     fn test_parse_single_number () -> Result<()> {
         let source = "1";
         assert_eq!(
-            expr(Lexer::from_str(source))?.to_string(), 
+            expr(&mut Lexer::new(source))?.to_string(), 
             "1"
         );
         Ok(())
