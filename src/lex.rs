@@ -16,8 +16,6 @@ pub enum Token<'a> {
  Number(f64), // This should be equal to javascript "Number" (IEEE 754-2019 binary64)
 }
 
-pub type Source<'a> =  std::iter::Peekable<std::str::Chars<'a>>;
-
 pub struct Lexer<'a> {
     source: &'a str,
     position: usize,
@@ -25,11 +23,6 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-
-    // todo impl std::str::FromStr
-    pub fn from_str(source: &'a str) -> Self {
-        Lexer::new(source)
-    }
 
     pub fn new (source: &'a str) -> Self {
         Self {
@@ -47,17 +40,6 @@ impl<'a> Lexer<'a> {
         if let Some(c) = self.peek_char() {
             self.position += c.len_utf8();
             Some(c)
-        } else {
-            None
-        }
-    }
-
-    fn advance_if<F> (&mut self, predicate: F) -> Option<char>
-        where 
-        F: Fn(char) -> bool
-    {
-        if predicate(self.peek_char()?) {
-            self.advance()
         } else {
             None
         }
@@ -170,47 +152,46 @@ mod tests {
 
     #[test]
     fn test_lex_simple_expression() -> Result<()> {
-        let lexer = Lexer::from_str("$price.foo.bar");
+        let lexer = Lexer::new("$price.foo.bar");
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;
         assert_eq!(tokens, [
             Token::Operator(Operator::Dollar),
-            Token::Name("price".into()),
+            Token::Name("price"),
             Token::Operator(Operator::Dot),
-            Token::Name("foo".into()),
+            Token::Name("foo"),
             Token::Operator(Operator::Dot),
-            Token::Name("bar".into())]
-        );
+            Token::Name("bar")
+        ]);
         Ok(())
     }
 
     #[test]
     fn test_lex_handle_whitespace() -> Result<()> {
-        let lexer = Lexer::from_str("  foo   bar  ");
+        let lexer = Lexer::new("  foo   bar  ");
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;
         assert_eq!(tokens, [
-            Token::Name("foo".into()),
-            Token::Name("bar".into())]
-        );
+            Token::Name("foo"),
+            Token::Name("bar")
+        ]);
         Ok(())
     }
 
     #[ignore = "Until deciaml support implementation"]
     #[test]
     fn test_lex_numeric_decimal() -> Result<()> {
-        let lexer = Lexer::from_str("1.1 2.2 3");
+        let lexer = Lexer::new("1.1 2.2 3");
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;
         assert_eq!(tokens, [
             Token::Number(1.1),
             Token::Number(2.2),
             Token::Number(3.0),
-        ]
-        );
+        ]);
         Ok(())
     }
 
     #[test]
     fn test_lex_numeric_expression() -> Result<()> {
-        let lexer = Lexer::from_str("1 +2* 3 ");
+        let lexer = Lexer::new("1 +2* 3 ");
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;
         assert_eq!(tokens, [
             Token::Number(1.0),
@@ -218,8 +199,7 @@ mod tests {
             Token::Number(2.0),
             Token::Operator(Operator::Star),
             Token::Number(3.0),
-        ]
-        );
+        ]);
         Ok(())
     }
 }
