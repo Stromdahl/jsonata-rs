@@ -11,6 +11,7 @@ pub struct Ast;
 
 enum Atom {
     Number(f64),
+    Name(String),
     End,
 }
 
@@ -18,6 +19,7 @@ impl std::fmt::Display for Atom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Number(i) => write!(f, "{i}"),
+            Self::Name(n) => write!(f, "{n}"),
             Self::End => write!(f, ""),
         }
     }
@@ -26,6 +28,7 @@ impl std::fmt::Display for Atom {
 // https://en.wikipedia.org/wiki/S-expression
 pub enum S {
     Atom(Atom),
+
     Cons(Operator, Vec<S>),
 }
 
@@ -36,7 +39,7 @@ impl std::fmt::Display for S {
             S::Cons(head, rest) => {
                 write!(f, "({head}")?;
                 for s in rest {
-                    write!(f, "{s}")?
+                    write!(f, " {s}")?
                 };
                 write!(f, ")")
             }
@@ -53,37 +56,41 @@ fn infix_binding_power(op: &Operator) -> (u8, u8) {
     }
 }
 
-fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> Result<S> {
-     let lhs = match lexer.next() {
+fn expr_bp(lexer: & mut Lexer, min_bp: u8) -> Result<S> {
+    let lhs = match lexer.next() {
         Some(token) => token?,
         None => return Ok(S::Atom(Atom::End)),
     };
 
     let mut lhs = match lhs {
         Token::Number(n) => S::Atom(Atom::Number(n)),
-        t => todo!("{t:?}")
+        Token::Name(n) => S::Atom(Atom::Name(n.to_string())),
+        t => todo!("{t:?}"),
     };
 
     loop {
-        let op = match lexer.peek() {
-            Some(Ok(Token::Operator(op))) => *op,
+        let op = match lexer.peek().cloned() {
+            Some(Ok(Token::Operator(op))) => op.clone(),
             Some(Err(e)) => return Err(e.clone()),
             None => break,
-            t => panic!("bad token: {:?}", t),
+            t => panic!("Unexpected token: {:?}", t),
         };
+
         let (l_bp, r_bp) = infix_binding_power(&op);
         if l_bp < min_bp {
             break;
         }
-        lexer.next();
+
+        lexer.next(); // No borrow conflict, since peek's borrow ended
+
         let rhs = expr_bp(lexer, r_bp)?;
-        lhs = S::Cons(op, vec![lhs, rhs])
+        lhs = S::Cons(op, vec![lhs, rhs]);
     }
 
     Ok(lhs)
 }
 
-fn expr(lexer: &mut Lexer<'_>) -> Result<S> {
+fn expr(lexer: & mut Lexer) -> Result<S> {
     expr_bp(lexer, 0)
 }
 
@@ -94,12 +101,20 @@ mod tests {
     use crate::Result;
 
     #[test]
-    fn test_parse_single_number () -> Result<()> {
-        let source = "1";
-        assert_eq!(
-            expr(&mut Lexer::new(source))?.to_string(), 
-            "1"
-        );
+    fn test_parse_numeric_expression () -> Result<()> {
+        let mut lexer = Lexer::new("1");
+        let r = expr(&mut lexer)?;
+        assert_eq!( r.to_string(), "1");
+
+        let mut lexer = Lexer::new("1 + 2 * 3");
+        let r = expr(&mut lexer)?;
+        assert_eq!( r.to_string(), "(+ 1 (* 2 3))");
+
+        let mut lexer = Lexer::new("a + b * c * d + e");
+        let r = expr(&mut lexer)?;
+        assert_eq!( r.to_string(), "(+ (+ a (* (* b c) d)) e)");
+
         Ok(())
     }
+
 }

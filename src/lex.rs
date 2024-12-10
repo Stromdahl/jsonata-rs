@@ -7,6 +7,8 @@ pub enum Operator {
     Star,
     Dollar,
     Dot,
+    ParenRight,
+    ParenLeft,
 }
 
 impl std::fmt::Display for Operator {
@@ -16,6 +18,8 @@ impl std::fmt::Display for Operator {
             Operator::Star => write!(f, "*"),
             Operator::Dollar => write!(f, "$"),
             Operator::Dot => write!(f, "."),
+            Operator::ParenRight => write!(f, ")"),
+            Operator::ParenLeft => write!(f, "("),
         }
     }
 }
@@ -84,13 +88,6 @@ impl<'a> Lexer<'a> {
             return Some(peeked)
         }
 
-        let operators = [
-            '$',
-            '.',
-            '+',
-            '*',
-        ];
-
         self.advance_while(|c| c.is_whitespace());
         let token = if let Some(c) = self.advance() {
             match c {
@@ -99,6 +96,8 @@ impl<'a> Lexer<'a> {
                 '*' => Ok(Token::Operator(Operator::Star)),
                 '$' => Ok(Token::Operator(Operator::Dollar)),
                 '.' => Ok(Token::Operator(Operator::Dot)),
+                ')' => Ok(Token::Operator(Operator::ParenRight)),
+                '(' => Ok(Token::Operator(Operator::ParenLeft)),
 
                 // string literals
                 // '"' => {
@@ -127,7 +126,7 @@ impl<'a> Lexer<'a> {
                 // names
                 _ => {
                     let start = self.position - 1;
-                    self.advance_while(|c| !operators.contains(&c) && c.is_alphanumeric());
+                    self.advance_while(|c| c.is_alphanumeric());
                     let end = self.position;
                     let text = &self.source[start..end];
                     match text {
