@@ -1,89 +1,129 @@
-use core::f64;
-
 use crate::{Error, Result};
 
-#[derive(Debug, PartialEq)]
-pub enum Token {
- Operator(String), // todo use enum Operator?
- String(String), // todo use &str ?
- Name(String), // todo use enum Name?
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Operator {
+    Plus,
+    Star,
+    Dollar,
+    Dot,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Token<'a> {
+ Operator(Operator), // todo use enum Operator?
+ String(&'a str), // todo use &str ?
+ Name(&'a str), // todo use enum Name?
  Number(f64), // This should be equal to javascript "Number" (IEEE 754-2019 binary64)
 }
 
 pub type Source<'a> =  std::iter::Peekable<std::str::Chars<'a>>;
 
 pub struct Lexer<'a> {
-    pub source: Source<'a>,
-    pub posotion: u32,
+    source: &'a str,
+    position: usize,
+    peeked: Option<Result<Token<'a>>>,
 }
 
 impl<'a> Lexer<'a> {
 
     // todo impl std::str::FromStr
     pub fn from_str(source: &'a str) -> Self {
-        let chars: Source<'a> = source.chars().peekable();
-        Lexer::new(chars)
+        Lexer::new(source)
     }
 
-    pub fn new (source: Source<'a>) -> Self {
+    pub fn new (source: &'a str) -> Self {
         Self {
             source,
-            posotion: 0,
+            position: 0,
+            peeked: None,
         }
     }
 
-    fn trim_while<F>(&mut self, f: F)
-    where
-        F: FnOnce(&char) -> bool + Copy,
-    {
-        while self.source.next_if(f).is_some() {}
+    fn peek_char (&self) -> Option<char> {
+        self.source[self.position..].chars().next()
     }
 
-    fn next_token(&mut self) -> Option<Result<Token>> {
+    fn advance (&mut self) -> Option<char> {
+        if let Some(c) = self.peek_char() {
+            self.position += c.len_utf8();
+            Some(c)
+        } else {
+            None
+        }
+    }
+
+    fn advance_if<F> (&mut self, predicate: F) -> Option<char>
+        where 
+        F: Fn(char) -> bool
+    {
+        if predicate(self.peek_char()?) {
+            self.advance()
+        } else {
+            None
+        }
+    }
+
+    fn advance_while<F>(&mut self, predicate: F)
+        where 
+        F: Fn(char) -> bool,
+    {
+        while let Some(ch) = self.peek_char() {
+            if !predicate(ch) {
+                break;
+            }
+            if self.advance().is_none() {
+                break;
+            }
+        }
+    }
+
+    pub fn peek (&mut self) -> Option<&Result<Token<'a>>> {
+        if self.peeked.is_some() {
+            return self.peeked.as_ref();
+        }
+        self.peeked = self.next();
+        self.peeked.as_ref()
+    }
+
+    fn next_token (&mut self) -> Option<Result<Token<'a>>> {
+        if let Some(peeked) = self.peeked.take() {
+            return Some(peeked)
+        }
+
         let operators = [
             '$',
             '.',
             '+',
             '*',
         ];
-        let token = if let Some(c) = self.source.next() {
-            self.trim_while(|x| x.is_whitespace());
+
+        self.advance_while(|c| c.is_whitespace());
+        let token = if let Some(c) = self.advance() {
             match c {
                 // single char operators
-                c if operators.contains(&c)=> {
-                    Ok(Token::Operator(c.to_string()))
-                }
+                '+' => Ok(Token::Operator(Operator::Plus)),
+                '*' => Ok(Token::Operator(Operator::Star)),
+                '$' => Ok(Token::Operator(Operator::Dollar)),
+                '.' => Ok(Token::Operator(Operator::Dot)),
 
                 // string literals
-                '"' => {
-                    let mut text = String::new();
-                    while let Some(c) = self.source.next_if(|&c| c != '"') {
-                        text.push(c);
-                    };
-                    Ok(Token::String(text))
-                }
+                // '"' => {
+                //     let mut text = String::new();
+                //     while let Some(c) = self.source.next_if(|&c| c != '"') {
+                //         text.push(c);
+                //     };
+                //     Ok(Token::String(text))
+                // },
 
                 // numeric literals
                 // TODO: This is a placeholder implementation of numeric literal
                 // It's problerbly not compatible with the javascript implementation
                 // Needs tests to make sure
                 '0'..='9' => {
-                    let mut text = String::from(c);
-                    while let Some(x) = self.source.next_if(|&x| x.is_numeric()) {
-                        text.push(x)
-                    }
-
-                    if let Some(x) = self.source.next_if(|&x| x == '.') {
-                        if let Some(&y) = self.source.peek() {
-                            if y.is_numeric() {
-                                text.push(x);
-                            }
-
-                            while let Some(x) = self.source.next_if(|&x| x.is_numeric()) {
-                                text.push(x)
-                            }
-                        }
-                    }
+                    let start = self.position - 1;
+                    self.advance_while(|c| c.is_numeric());
+                    let end = self.position;
+                    let text = &self.source[start..end];
                     match text.parse() {
                         Ok(literal) => Ok(Token::Number(literal)),
                         Err(_) => Err(Error::S0102)
@@ -92,16 +132,16 @@ impl<'a> Lexer<'a> {
 
                 // names
                 _ => {
-                    let mut text = String::from(c);
-                    while let Some(c) = self.source.next_if(|&c| !operators.contains(&c)) {
-                        text.push(c)
-                    };
-                    match text.as_str() {
+                    let start = self.position - 1;
+                    self.advance_while(|c| !operators.contains(&c) && c.is_alphanumeric());
+                    let end = self.position;
+                    let text = &self.source[start..end];
+                    match text {
                         "or" | "in" | "and" => todo!(),
                         "true" => todo!(),
                         "false" => todo!(),
                         "null" => todo!(),
-                        _ => {
+                        text => {
                             Ok(Token::Name(text))
                         }
                     }
@@ -116,7 +156,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<Token>;
+    type Item = Result<Token<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_token()
@@ -133,25 +173,50 @@ mod tests {
         let lexer = Lexer::from_str("$price.foo.bar");
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;
         assert_eq!(tokens, [
-            Token::Operator("$".into()),
+            Token::Operator(Operator::Dollar),
             Token::Name("price".into()),
-            Token::Operator(".".into()),
+            Token::Operator(Operator::Dot),
             Token::Name("foo".into()),
-            Token::Operator(".".into()),
+            Token::Operator(Operator::Dot),
             Token::Name("bar".into())]
         );
         Ok(())
     }
 
     #[test]
+    fn test_lex_handle_whitespace() -> Result<()> {
+        let lexer = Lexer::from_str("  foo   bar  ");
+        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
+        assert_eq!(tokens, [
+            Token::Name("foo".into()),
+            Token::Name("bar".into())]
+        );
+        Ok(())
+    }
+
+    #[ignore = "Until deciaml support implementation"]
+    #[test]
+    fn test_lex_numeric_decimal() -> Result<()> {
+        let lexer = Lexer::from_str("1.1 2.2 3");
+        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
+        assert_eq!(tokens, [
+            Token::Number(1.1),
+            Token::Number(2.2),
+            Token::Number(3.0),
+        ]
+        );
+        Ok(())
+    }
+
+    #[test]
     fn test_lex_numeric_expression() -> Result<()> {
-        let lexer = Lexer::from_str("1 +2* 3");
+        let lexer = Lexer::from_str("1 +2* 3 ");
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;
         assert_eq!(tokens, [
             Token::Number(1.0),
-            Token::Operator("+".into()),
+            Token::Operator(Operator::Plus),
             Token::Number(2.0),
-            Token::Operator("*".into()),
+            Token::Operator(Operator::Star),
             Token::Number(3.0),
         ]
         );

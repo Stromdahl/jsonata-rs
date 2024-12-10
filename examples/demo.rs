@@ -11,18 +11,18 @@
 //     "result": 45
 // }
 
-use jsonata_rs::{Lexer, Token, Result};
+// use jsonata_rs::{Lexer, Token, Result};
 
 
 fn main() {
 
-    let expr = "$price.foo.bar";
+    // let expr = "$price.foo.bar";
 
-    let lexer = Lexer {
-        source: expr.chars().peekable(),
-        posotion: 0,
-    };
+    // let lexer = Lexer {
+    //     source: expr.chars().peekable(),
+    //     posotion: 0,
+    // };
 
-    let tokens: Vec<Result<Token>> = lexer.collect();
-    println!("{:?}", tokens);
+    // let tokens: Vec<Result<Token>> = lexer.collect();
+    // println!("{:?}", tokens);
 }

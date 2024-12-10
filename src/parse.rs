@@ -1,3 +1,4 @@
+use crate::lex::Operator;
 use crate::Token;
 use crate::Lexer;
 use crate::Result;
@@ -44,11 +45,15 @@ impl std::fmt::Display for S {
 }
 
 
-fn infix_binding_power () -> (u8, u8) {
-    todo!()
+fn infix_binding_power(op: Operator) -> (u8, u8) {
+    match op {
+        Operator::Plus => (1, 2),
+        Operator::Star => (3, 4),
+        _ => panic!("bad op: {:?}", op)
+    }
 }
 
-fn expr_bp(mut lexer: Lexer) -> Result<S> {
+fn expr_bp(mut lexer: Lexer, min_bp: u8) -> Result<S> {
      let lhs = match lexer.next() {
         Some(token) => token?,
         None => return Ok(S::Atom(Atom::End)),
@@ -60,13 +65,16 @@ fn expr_bp(mut lexer: Lexer) -> Result<S> {
     };
 
     loop {
-        let op = lexer.peek();
-        // let op = match lexer.next().unwrap().unwrap() {
-        //     Token::Operator(op) => op,
-        //     t => panic!("bad token: {:?}", t),
-        // };
-        // let (l_bp, r_bp) = infix_binding_power(op);
-        // todo!()
+        let op = match lexer.peek() {
+            Some(Ok(Token::Operator(op))) => op,
+            Some(Err(e)) => return Err(e),
+            t => panic!("bad token: {:?}", t),
+        };
+        let (l_bp, r_bp) = infix_binding_power(op);
+        if l_bp < min_bp {
+            break;
+        }
+        todo!()
     }
 
     Ok(lhs)
