@@ -28,7 +28,6 @@ impl std::fmt::Display for Atom {
 // https://en.wikipedia.org/wiki/S-expression
 pub enum S {
     Atom(Atom),
-
     Cons(Operator, Vec<S>),
 }
 
@@ -52,6 +51,7 @@ fn infix_binding_power(op: &Operator) -> (u8, u8) {
     match op {
         Operator::Plus => (1, 2),
         Operator::Star => (3, 4),
+        Operator::Dot => (6, 5),
         _ => panic!("bad op: {:?}", op)
     }
 }
@@ -90,7 +90,7 @@ fn expr_bp(lexer: & mut Lexer, min_bp: u8) -> Result<S> {
     Ok(lhs)
 }
 
-fn expr(lexer: & mut Lexer) -> Result<S> {
+pub fn expr(lexer: & mut Lexer) -> Result<S> {
     expr_bp(lexer, 0)
 }
 
@@ -99,6 +99,22 @@ mod tests {
     use super::expr;
     use crate::Lexer;
     use crate::Result;
+
+    #[test]
+    fn test_parse_expression_complex () -> Result<()> {
+        let mut lexer = Lexer::new("1 + 2 + f . g . h * 3 * 4");
+        let r = expr(&mut lexer)?;
+        assert_eq!(r.to_string(), "(+ (+ 1 2) (* (* (. f (. g h)) 3) 4))");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_path_expression () -> Result<()> {
+        let mut lexer = Lexer::new("price.foo.bar");
+        let r = expr(&mut lexer)?;
+        assert_eq!(r.to_string(), "(. price (. foo bar))");
+        Ok(())
+    }
 
     #[test]
     fn test_parse_numeric_expression () -> Result<()> {

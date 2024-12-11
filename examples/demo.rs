@@ -13,16 +13,12 @@
 
 // use jsonata_rs::{Lexer, Token, Result};
 
+use jsonata_rs::{parse::expr, Lexer, Result};
 
-fn main() {
 
-    // let expr = "$price.foo.bar";
-
-    // let lexer = Lexer {
-    //     source: expr.chars().peekable(),
-    //     posotion: 0,
-    // };
-
-    // let tokens: Vec<Result<Token>> = lexer.collect();
-    // println!("{:?}", tokens);
+fn main() -> Result<()> {
+  let mut lexer = Lexer::new("price.foo.bar");
+  let r = expr(&mut lexer)?;
+  println!("{}", r.to_string());
+  Ok(())
 }
