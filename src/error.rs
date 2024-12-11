@@ -1,10 +1,12 @@
-
 // pub type Error = Box<dyn std::error::Error>;
 
 // TODO: user "thiserror"?
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
-    S0102, // Number out of range: {{token}}
+    T2001,
+    T2002,
+    S0102,
+    D1002, // Number out of range: {{token}}
 }
 
 pub type Result<T> = core::result::Result<T, Error>;

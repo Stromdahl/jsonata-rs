@@ -15,10 +15,9 @@
 
 use jsonata_rs::{parse::expr, Lexer, Result};
 
-
 fn main() -> Result<()> {
-  let mut lexer = Lexer::new("price.foo.bar");
-  let r = expr(&mut lexer)?;
-  println!("{}", r.to_string());
-  Ok(())
+    let mut lexer = Lexer::new("price.foo.bar");
+    let r = expr(&mut lexer)?;
+    println!("{}", r.to_string());
+    Ok(())
 }

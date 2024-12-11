@@ -11,6 +11,7 @@ pub enum Operator {
     ParenRight,
     ParenLeft,
     Minus,
+    Percentage,
 }
 
 impl std::fmt::Display for Operator {
@@ -19,6 +20,7 @@ impl std::fmt::Display for Operator {
             Operator::Plus => write!(f, "+"),
             Operator::Minus => write!(f, "-"),
             Operator::Star => write!(f, "*"),
+            Operator::Percentage => write!(f, "%"),
             Operator::Slash => write!(f, "/"),
             Operator::Dollar => write!(f, "$"),
             Operator::Dot => write!(f, "."),
@@ -99,6 +101,7 @@ impl<'a> Lexer<'a> {
                 '+' => Ok(Token::Operator(Operator::Plus)),
                 '-' => Ok(Token::Operator(Operator::Minus)),
                 '*' => Ok(Token::Operator(Operator::Star)),
+                '/' => Ok(Token::Operator(Operator::Slash)),
                 '$' => Ok(Token::Operator(Operator::Dollar)),
                 '.' => Ok(Token::Operator(Operator::Dot)),
                 ')' => Ok(Token::Operator(Operator::ParenRight)),
