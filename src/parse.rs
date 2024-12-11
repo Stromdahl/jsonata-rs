@@ -5,11 +5,7 @@ use crate::Result;
 
 // https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
-
-
-pub struct Ast;
-
-enum Atom {
+pub enum Atom {
     Operator(Operator),
     Number(f64),
     String(String),
@@ -87,13 +83,12 @@ fn expr_bp(lexer: & mut Lexer, min_bp: u8) -> Result<S> {
             let rhs = expr_bp(lexer, r_bp)?;
             S::Cons(op, vec![rhs])
         },
-        t => todo!("{t:?}"),
     };
 
     loop {
         let op = match lexer.peek().cloned() {
-            Some(Ok(Token::Operator(op))) => op.clone(),
-            Some(Err(e)) => return Err(e.clone()),
+            Some(Ok(Token::Operator(op))) => op,
+            Some(Err(e)) => return Err(e),
             None => break,
             t => panic!("Unexpected token: {:?}", t),
         };
