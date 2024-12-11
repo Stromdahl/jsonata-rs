@@ -12,6 +12,7 @@ pub struct Ast;
 enum Atom {
     Operator(Operator),
     Number(f64),
+    String(String),
     Name(String),
     End,
 }
@@ -22,6 +23,7 @@ impl std::fmt::Display for Atom {
             Self::Operator(o) => write!(f, "{o}"),
             Self::Number(i) => write!(f, "{i}"),
             Self::Name(n) => write!(f, "{n}"),
+            Self::String(n) => write!(f, "\"{n}\""),
             Self::End => write!(f, ""),
         }
     }
@@ -74,6 +76,7 @@ fn expr_bp(lexer: & mut Lexer, min_bp: u8) -> Result<S> {
     let mut lhs = match lhs {
         Token::Number(n) => S::Atom(Atom::Number(n)),
         Token::Name(n) => S::Atom(Atom::Name(n.to_string())),
+        Token::String(n) => S::Atom(Atom::String(n.to_string())),
         Token::Operator(Operator::ParenLeft) => {
             let lhs = expr_bp(lexer, 0)?;
             assert_eq!(lexer.next(), Some(Ok(Token::Operator(Operator::ParenRight))));
@@ -144,6 +147,10 @@ mod tests {
         let mut lexer = Lexer::new("--f . g");
         let r = expr(&mut lexer)?;
         assert_eq!(r.to_string(), "(- (- (. f g)))");
+
+        let mut lexer = Lexer::new("-(34 + 35)");
+        let r = expr(&mut lexer)?;
+        assert_eq!(r.to_string(), "(- (+ 34 35))");
         Ok(())
     }
 

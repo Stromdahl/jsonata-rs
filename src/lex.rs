@@ -105,17 +105,18 @@ impl<'a> Lexer<'a> {
                 '(' => Ok(Token::Operator(Operator::ParenLeft)),
 
                 // string literals
-                // '"' => {
-                //     let mut text = String::new();
-                //     while let Some(c) = self.source.next_if(|&c| c != '"') {
-                //         text.push(c);
-                //     };
-                //     Ok(Token::String(text))
-                // },
+                '"' => {
+                    let start = self.position;
+                    self.advance_while(|c| c != '"');
+                    let end = self.position;
+                    let text = &self.source[start..end];
+                    self.position += 1;
+                    Ok(Token::String(text))
+                },
 
                 // numeric literals
                 // TODO: This is a placeholder implementation of numeric literal
-                // It's problerbly not compatible with the javascript implementation
+                // NOT compatible with the javascript implementation
                 // Needs tests to make sure
                 '0'..='9' => {
                     let start = self.position - 1;
@@ -165,6 +166,18 @@ impl<'a> Iterator for Lexer<'a> {
 #[cfg(test)]
 mod tests {
     use super::{Lexer, Operator, Result, Token};
+
+    #[test]
+    fn test_lex_string() -> Result<()> {
+        let lexer = Lexer::new("foo.\"bar\"");
+        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
+        assert_eq!(tokens, [
+            Token::Name("foo"),
+            Token::Operator(Operator::Dot),
+            Token::String("bar"),
+        ]);
+        Ok(())
+    }
 
     #[test]
     fn test_lex_prefix_number() -> Result<()> {
