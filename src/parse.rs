@@ -55,13 +55,14 @@ fn prefix_binding_power (op: &Operator) -> ((), u8) {
     }
 }
 
-fn infix_binding_power(op: &Operator) -> (u8, u8) {
-    match op {
-        Operator::Plus => (1, 2),
-        Operator::Star => (3, 4),
+fn infix_binding_power(op: &Operator) -> Option<(u8, u8)> {
+    let res = match op {
+        Operator::Plus | Operator::Minus => (1, 2),
+        Operator::Star | Operator::Slash => (3, 4),
         Operator::Dot => (6, 5),
-        _ => panic!("bad op: {:?}", op)
-    }
+        _ => return None
+    };
+    Some(res)
 }
 
 fn expr_bp(lexer: & mut Lexer, min_bp: u8) -> Result<S> {
@@ -73,6 +74,11 @@ fn expr_bp(lexer: & mut Lexer, min_bp: u8) -> Result<S> {
     let mut lhs = match lhs {
         Token::Number(n) => S::Atom(Atom::Number(n)),
         Token::Name(n) => S::Atom(Atom::Name(n.to_string())),
+        Token::Operator(Operator::ParenLeft) => {
+            let lhs = expr_bp(lexer, 0)?;
+            assert_eq!(lexer.next(), Some(Ok(Token::Operator(Operator::ParenRight))));
+            lhs
+        },
         Token::Operator(op) => {
             let ((), r_bp) = prefix_binding_power(&op);
             let rhs = expr_bp(lexer, r_bp)?;
@@ -89,15 +95,18 @@ fn expr_bp(lexer: & mut Lexer, min_bp: u8) -> Result<S> {
             t => panic!("Unexpected token: {:?}", t),
         };
 
-        let (l_bp, r_bp) = infix_binding_power(&op);
-        if l_bp < min_bp {
-            break;
+        if let Some((l_bp, r_bp)) = infix_binding_power(&op) {
+            if l_bp < min_bp {
+                break;
+            }
+
+            lexer.next();
+
+            let rhs = expr_bp(lexer, r_bp)?;
+            lhs = S::Cons(op, vec![lhs, rhs]);
+            continue;
         }
-
-        lexer.next();
-
-        let rhs = expr_bp(lexer, r_bp)?;
-        lhs = S::Cons(op, vec![lhs, rhs]);
+        break;
     }
 
     Ok(lhs)
@@ -112,6 +121,19 @@ mod tests {
     use super::expr;
     use crate::Lexer;
     use crate::Result;
+
+    #[test]
+    fn test_parse_parenthesised_expression () -> Result<()> {
+        let mut lexer = Lexer::new("(((0)))");
+        let r = expr(&mut lexer)?;
+        assert_eq!(r.to_string(), "0");
+
+        let mut lexer = Lexer::new("(1 + 2) * 3");
+        let r = expr(&mut lexer)?;
+        assert_eq!( r.to_string(), "(* (+ 1 2) 3)");
+
+        Ok(())
+    }
 
     #[test]
     fn test_parse_prefix () -> Result<()> {
@@ -138,6 +160,10 @@ mod tests {
         let mut lexer = Lexer::new("price.foo.bar");
         let r = expr(&mut lexer)?;
         assert_eq!(r.to_string(), "(. price (. foo bar))");
+
+        let mut lexer = Lexer::new("price.\"my name\".bar");
+        let r = expr(&mut lexer)?;
+        assert_eq!(r.to_string(), "(. price (. \"my name\" bar))");
         Ok(())
     }
 

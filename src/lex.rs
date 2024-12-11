@@ -4,6 +4,7 @@ use crate::{Error, Result};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operator {
     Plus,
+    Slash,
     Star,
     Dollar,
     Dot,
@@ -18,6 +19,7 @@ impl std::fmt::Display for Operator {
             Operator::Plus => write!(f, "+"),
             Operator::Minus => write!(f, "-"),
             Operator::Star => write!(f, "*"),
+            Operator::Slash => write!(f, "/"),
             Operator::Dollar => write!(f, "$"),
             Operator::Dot => write!(f, "."),
             Operator::ParenRight => write!(f, ")"),
