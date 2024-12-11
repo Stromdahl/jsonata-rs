@@ -1,4 +1,3 @@
-
 use crate::lex::Operator;
 use crate::parse::{Atom, S};
 use crate::Error;
@@ -61,7 +60,6 @@ pub fn evaluate(r: S) -> Result<S> {
         S::Atom(a) => S::Atom(a),
         S::Binary(op, lhs, rhs) => evaluate_binary(op, *lhs, *rhs)?,
         S::Unary(op, lhs) => evaluate_unary(op, *lhs)?,
-        _ => todo!(),
     };
     Ok(res)
 }

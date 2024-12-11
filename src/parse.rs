@@ -5,8 +5,8 @@ use crate::Token;
 
 // https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
+#[derive(Clone)]
 pub enum Atom {
-    Operator(Operator),
     Number(f64),
     String(String),
     Name(String),
@@ -16,7 +16,6 @@ pub enum Atom {
 impl std::fmt::Display for Atom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Operator(o) => write!(f, "{o}"),
             Self::Number(i) => write!(f, "{i}"),
             Self::Name(n) => write!(f, "{n}"),
             Self::String(n) => write!(f, "\"{n}\""),
@@ -26,9 +25,9 @@ impl std::fmt::Display for Atom {
 }
 
 // https://en.wikipedia.org/wiki/S-expression
+#[derive(Clone)]
 pub enum S {
     Atom(Atom),
-    Cons(Operator, Vec<S>),
     Binary(Operator, Box<S>, Box<S>),
     Unary(Operator, Box<S>),
 }
@@ -39,13 +38,6 @@ impl std::fmt::Display for S {
             S::Atom(i) => write!(f, "{i}"),
             S::Binary(op, lhs, rhs) => write!(f, "({} {} {})", op, lhs, rhs),
             S::Unary(op, lhs) => write!(f, "({} {})", op, lhs),
-            S::Cons(head, rest) => {
-                write!(f, "({head}")?;
-                for s in rest {
-                    write!(f, " {s}")?
-                }
-                write!(f, ")")
-            }
         }
     }
 }
@@ -117,24 +109,24 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> Result<S> {
     Ok(lhs)
 }
 
-pub fn expr(lexer: &mut Lexer) -> Result<S> {
+pub fn parse(lexer: &mut Lexer) -> Result<S> {
     expr_bp(lexer, 0)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::expr;
+    use super::parse;
     use crate::Lexer;
     use crate::Result;
 
     #[test]
     fn test_parse_parenthesised_expression() -> Result<()> {
         let mut lexer = Lexer::new("(((0)))");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "0");
 
         let mut lexer = Lexer::new("(1 + 2) * 3");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "(* (+ 1 2) 3)");
 
         Ok(())
@@ -143,15 +135,15 @@ mod tests {
     #[test]
     fn test_parse_prefix() -> Result<()> {
         let mut lexer = Lexer::new("--1 * 2");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "(* (- (- 1)) 2)");
 
         let mut lexer = Lexer::new("--f . g");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "(- (- (. f g)))");
 
         let mut lexer = Lexer::new("-(34 + 35)");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "(- (+ 34 35))");
         Ok(())
     }
@@ -159,7 +151,7 @@ mod tests {
     #[test]
     fn test_parse_expression_complex() -> Result<()> {
         let mut lexer = Lexer::new("1 + 2 + f . g . h * 3 * 4");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "(+ (+ 1 2) (* (* (. f (. g h)) 3) 4))");
         Ok(())
     }
@@ -167,11 +159,11 @@ mod tests {
     #[test]
     fn test_parse_path_expression() -> Result<()> {
         let mut lexer = Lexer::new("price.foo.bar");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "(. price (. foo bar))");
 
         let mut lexer = Lexer::new("price.\"my name\".bar");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "(. price (. \"my name\" bar))");
         Ok(())
     }
@@ -179,15 +171,15 @@ mod tests {
     #[test]
     fn test_parse_numeric_expression() -> Result<()> {
         let mut lexer = Lexer::new("1");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "1");
 
         let mut lexer = Lexer::new("1 + 2 * 3");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "(+ 1 (* 2 3))");
 
         let mut lexer = Lexer::new("a + b * c * d + e");
-        let r = expr(&mut lexer)?;
+        let r = parse(&mut lexer)?;
         assert_eq!(r.to_string(), "(+ (+ a (* (* b c) d)) e)");
 
         Ok(())

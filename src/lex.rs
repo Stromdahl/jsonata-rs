@@ -102,6 +102,7 @@ impl<'a> Lexer<'a> {
                 '-' => Ok(Token::Operator(Operator::Minus)),
                 '*' => Ok(Token::Operator(Operator::Star)),
                 '/' => Ok(Token::Operator(Operator::Slash)),
+                '%' => Ok(Token::Operator(Operator::Percentage)),
                 '$' => Ok(Token::Operator(Operator::Dollar)),
                 '.' => Ok(Token::Operator(Operator::Dot)),
                 ')' => Ok(Token::Operator(Operator::ParenRight)),

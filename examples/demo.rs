@@ -13,11 +13,12 @@
 
 // use jsonata_rs::{Lexer, Token, Result};
 
-use jsonata_rs::{parse::expr, Lexer, Result};
+// use jsonata_rs::{parse::parse, Lexer, Result};
 
-fn main() -> Result<()> {
-    let mut lexer = Lexer::new("price.foo.bar");
-    let r = expr(&mut lexer)?;
-    println!("{}", r.to_string());
-    Ok(())
+fn main() {
+    //let mut lexer = Lexer::new("price.foo.bar");
+    //let r = parse(&mut lexer)?;
+    //println!("{}", r.to_string());
+    //Ok(())
+    println!("hello, world!");
 }
