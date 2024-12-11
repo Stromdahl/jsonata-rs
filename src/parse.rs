@@ -10,6 +10,7 @@ use crate::Result;
 pub struct Ast;
 
 enum Atom {
+    Operator(Operator),
     Number(f64),
     Name(String),
     End,
@@ -18,6 +19,7 @@ enum Atom {
 impl std::fmt::Display for Atom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Operator(o) => write!(f, "{o}"),
             Self::Number(i) => write!(f, "{i}"),
             Self::Name(n) => write!(f, "{n}"),
             Self::End => write!(f, ""),
@@ -46,6 +48,12 @@ impl std::fmt::Display for S {
     }
 }
 
+fn prefix_binding_power (op: &Operator) -> ((), u8) {
+    match op {
+        Operator::Minus => ((), 5),
+        _ => panic!("bad op: {:?}", op)
+    }
+}
 
 fn infix_binding_power(op: &Operator) -> (u8, u8) {
     match op {
@@ -65,6 +73,11 @@ fn expr_bp(lexer: & mut Lexer, min_bp: u8) -> Result<S> {
     let mut lhs = match lhs {
         Token::Number(n) => S::Atom(Atom::Number(n)),
         Token::Name(n) => S::Atom(Atom::Name(n.to_string())),
+        Token::Operator(op) => {
+            let ((), r_bp) = prefix_binding_power(&op);
+            let rhs = expr_bp(lexer, r_bp)?;
+            S::Cons(op, vec![rhs])
+        },
         t => todo!("{t:?}"),
     };
 
@@ -81,7 +94,7 @@ fn expr_bp(lexer: & mut Lexer, min_bp: u8) -> Result<S> {
             break;
         }
 
-        lexer.next(); // No borrow conflict, since peek's borrow ended
+        lexer.next();
 
         let rhs = expr_bp(lexer, r_bp)?;
         lhs = S::Cons(op, vec![lhs, rhs]);
@@ -99,6 +112,18 @@ mod tests {
     use super::expr;
     use crate::Lexer;
     use crate::Result;
+
+    #[test]
+    fn test_parse_prefix () -> Result<()> {
+        let mut lexer = Lexer::new("--1 * 2");
+        let r = expr(&mut lexer)?;
+        assert_eq!(r.to_string(), "(* (- (- 1)) 2)");
+
+        let mut lexer = Lexer::new("--f . g");
+        let r = expr(&mut lexer)?;
+        assert_eq!(r.to_string(), "(- (- (. f g)))");
+        Ok(())
+    }
 
     #[test]
     fn test_parse_expression_complex () -> Result<()> {

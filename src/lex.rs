@@ -9,12 +9,14 @@ pub enum Operator {
     Dot,
     ParenRight,
     ParenLeft,
+    Minus,
 }
 
 impl std::fmt::Display for Operator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Operator::Plus => write!(f, "+"),
+            Operator::Minus => write!(f, "-"),
             Operator::Star => write!(f, "*"),
             Operator::Dollar => write!(f, "$"),
             Operator::Dot => write!(f, "."),
@@ -93,6 +95,7 @@ impl<'a> Lexer<'a> {
             match c {
                 // single char operators
                 '+' => Ok(Token::Operator(Operator::Plus)),
+                '-' => Ok(Token::Operator(Operator::Minus)),
                 '*' => Ok(Token::Operator(Operator::Star)),
                 '$' => Ok(Token::Operator(Operator::Dollar)),
                 '.' => Ok(Token::Operator(Operator::Dot)),
@@ -160,6 +163,17 @@ impl<'a> Iterator for Lexer<'a> {
 #[cfg(test)]
 mod tests {
     use super::{Lexer, Operator, Result, Token};
+
+    #[test]
+    fn test_lex_prefix_number() -> Result<()> {
+        let lexer = Lexer::new("-1");
+        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
+        assert_eq!(tokens, [
+            Token::Operator(Operator::Minus),
+            Token::Number(1.0)
+        ]);
+        Ok(())
+    }
 
     #[test]
     fn test_lex_single_number() -> Result<()> {
