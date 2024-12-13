@@ -1,20 +1,5 @@
-// mod evaluate;
-// use evaluate::evaluate;
-
-use jsonata_parser::Parser;
-use jsonata_parser::Expression;
+use jsonata_expression::{Expr, BinaryOperator};
 use jsonata_error::{Result, Error};
-
-enum BinaryOperator {
-    Add,
-}
-
-pub enum Expr {
-    Number(f64),
-    Field(String),
-    Binary(BinaryOperator, Box<Expr>, Box<Expr>),
-    Chain(Box<Expr>, Box<Expr>),
-}
 
 fn evaluate<T: JsonataData>(expr: &Expr, data: &T) -> Result<T> {
     match expr {
@@ -74,20 +59,20 @@ impl JsonataData for serde_json::Value {
     }
 }
 
-pub struct Jsonata(Expression);
-
-pub fn jsonata (expr: &str) -> Result<Jsonata> {
-    let parser = Parser::new(expr);
-    let ast = parser.parse()?;
-    Ok(Jsonata(ast))
-}
-
-impl Jsonata {
-    pub fn evaluate(&self, data: serde_json::Value) -> Result<Expression> {
-        todo!()
-        //evaluate(self.0.clone())
-    }
-}
+// pub struct Jsonata(Expression);
+// 
+// pub fn jsonata (expr: &str) -> Result<Jsonata> {
+//     let parser = Parser::new(expr);
+//     let ast = parser.parse()?;
+//     Ok(Jsonata(ast))
+// }
+// 
+// impl Jsonata {
+//     pub fn evaluate(&self, data: serde_json::Value) -> Result<Expression> {
+//         todo!()
+//         //evaluate(self.0.clone())
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

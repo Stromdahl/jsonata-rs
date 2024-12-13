@@ -6,6 +6,7 @@ version.workspace = true
 [dependencies]
 jsonata-parser = { workspace = true }
 jsonata-error = { workspace = true }
+jsonata-expression = { workspace = true }
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.133"
 

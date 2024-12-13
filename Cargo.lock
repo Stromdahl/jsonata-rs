@@ -13,6 +13,7 @@ name = "jsonata"
 version = "0.1.0"
 dependencies = [
  "jsonata-error",
+ "jsonata-expression",
  "jsonata-parser",
  "serde",
  "serde_json",
@@ -20,6 +21,10 @@ dependencies = [
 
 [[package]]
 name = "jsonata-error"
+version = "0.1.0"
+
+[[package]]
+name = "jsonata-expression"
 version = "0.1.0"
 
 [[package]]
