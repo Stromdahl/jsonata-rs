@@ -1,6 +1,6 @@
+use jsonata_error::Result;
 use crate::Operator;
 use crate::Lexer;
-use crate::Result;
 use crate::Token;
 
 // https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html

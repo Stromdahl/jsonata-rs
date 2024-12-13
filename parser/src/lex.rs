@@ -1,5 +1,5 @@
 
-use crate::{Error, Result};
+use jsonata_error::{Error, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operator {

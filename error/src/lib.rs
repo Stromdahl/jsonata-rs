@@ -1,4 +1,3 @@
-// pub type Error = Box<dyn std::error::Error>;
 
 // TODO: user "thiserror"?
 #[derive(Debug, Clone, PartialEq)]

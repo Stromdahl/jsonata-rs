@@ -1,5 +1,4 @@
-mod error;
-pub use error::{Error, Result};
+use jsonata_error::{Error, Result};
 
 mod lex;
 use lex::{Lexer, Token};

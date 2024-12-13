@@ -2,12 +2,14 @@
 members = [ 
   "jsonata",
   "parser",
+  "error",
 ]
 
 resolver = "2"
 
 [workspace.dependencies]
 jsonata-parser = { path = "parser" }
+jsonata-error = { path = "error" }
 
 [workspace.package]
 version = "0.1.0"
