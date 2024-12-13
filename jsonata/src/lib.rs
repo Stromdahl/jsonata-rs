@@ -1,7 +1,7 @@
-use jsonata_expression::{Expr, BinaryOperator, NumericBinaryOperator};
+use jsonata_expression::{Expression, BinaryOperator, NumericBinaryOperator, Atom};
 use jsonata_error::{Result, Error};
 
-fn evaluteNumericBinary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expr, rhs: &Expr, data: &T) -> Result<T> {
+fn evaluteNumericBinary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expression, rhs: &Expression, data: &T) -> Result<T> {
     let lhs = evaluate(lhs, data)?.as_f64().ok_or(Error::T2001)?;
     let rhs = evaluate(rhs, data)?.as_f64().ok_or(Error::T2002)?;
     let res = match op {
@@ -11,25 +11,27 @@ fn evaluteNumericBinary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expr, 
     Ok(T::from_f64(res))
 }
 
-fn evaluate<T: JsonataData>(expr: &Expr, data: &T) -> Result<T> {
+fn evaluate<T: JsonataData>(expr: &Expression, data: &T) -> Result<T> {
     match expr {
-        Expr::Chain(lhs, rhs) => {
-            let intermediate = evaluate(lhs, data)?;
-            evaluate(rhs, &intermediate)
-        }
-        Expr::Number(n) => Ok(T::from_f64(*n)),
-        Expr::Field(field) => {
+        Expression::Atom(Atom::Number(n)) => Ok(T::from_f64(*n)),
+        Expression::Field(field) => {
             if let Some(value) = data.get_field(field) {
                 Ok(value) 
             } else {
                 todo!();
             }
         },
-        Expr::Binary(op, lhs, rhs) => {
-            let res = match op {
-                BinaryOperator::Numeric(op) => evaluteNumericBinary(op, lhs, rhs, data)?,
-            };
-            Ok(res)
+        Expression::Binary(op, lhs, rhs) => {
+            match op {
+                BinaryOperator::Numeric(op) => evaluteNumericBinary(op, lhs, rhs, data),
+                BinaryOperator::Chain => {
+                    let intermediate = evaluate(lhs, data)?;
+                    evaluate(rhs, &intermediate)
+                }
+            }
+        }
+        Expression::Unary(_op, _lhs) => {
+            todo!();
         }
     }
 }
@@ -81,29 +83,27 @@ mod tests {
 
     use crate::evaluate;
 
-    use super::{Expr, BinaryOperator, NumericBinaryOperator, Result};
+    use super::{Expression, BinaryOperator as Binary, NumericBinaryOperator as Numeric, Result, Atom};
 
     #[test]
     fn serde_test () -> Result<()> {
+        // let value: serde_json::Value = serde_json::from_str(r#"{"x": 3, "y": 3}"#).unwrap();
         let value = serde_json::json!({
-            "x": {"a": 2},
             "y": {"b": 5},
         });
 
-        let expr = Expr::Binary(
-            BinaryOperator::Numeric(NumericBinaryOperator::Mult),
-            Box::new(Expr::Chain(
-                Box::new(Expr::Field("x".into())),
-                Box::new(Expr::Field("a".into()))
-            )),
-            Box::new(Expr::Chain(
-                Box::new(Expr::Field("y".into())),
-                Box::new(Expr::Field("b".into()))
+        // 5 * y.b;
+        let expr = Expression::Binary(
+            Binary::Numeric(Numeric::Mult),
+            Box::new(Expression::Atom(Atom::Number(5.0))),
+            Box::new(Expression::Binary(
+                Binary::Chain,
+                Box::new(Expression::Field("y".into())),
+                Box::new(Expression::Field("b".into()))
             )),
         );
-
         let result = evaluate(&expr, &value)?;
-        println!("Result = {:?}", result);
+        assert_eq!(result, serde_json::json!(25.0));
         Ok(())
     }
 }

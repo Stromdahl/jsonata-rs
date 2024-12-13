@@ -4,12 +4,17 @@ pub enum NumericBinaryOperator {
 }
 
 pub enum BinaryOperator {
-    Numeric(NumericBinaryOperator)
+    Numeric(NumericBinaryOperator),
+    Chain,
 }
 
-pub enum Expr {
+pub enum Atom {
     Number(f64),
+}
+
+pub enum Expression {
+    Atom(Atom),
     Field(String),
-    Binary(BinaryOperator, Box<Expr>, Box<Expr>),
-    Chain(Box<Expr>, Box<Expr>),
+    Binary(BinaryOperator, Box<Expression>, Box<Expression>),
+    Unary(BinaryOperator, Box<Expression>),
 }
