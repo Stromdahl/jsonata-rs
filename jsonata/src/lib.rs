@@ -1,5 +1,15 @@
-use jsonata_expression::{Expr, BinaryOperator};
+use jsonata_expression::{Expr, BinaryOperator, NumericBinaryOperator};
 use jsonata_error::{Result, Error};
+
+fn evaluteNumericBinary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expr, rhs: &Expr, data: &T) -> Result<T> {
+    let lhs = evaluate(lhs, data)?.as_f64().ok_or(Error::T2001)?;
+    let rhs = evaluate(rhs, data)?.as_f64().ok_or(Error::T2002)?;
+    let res = match op {
+        NumericBinaryOperator::Add => lhs + rhs,
+        NumericBinaryOperator::Mult => lhs * rhs,
+    };
+    Ok(T::from_f64(res))
+}
 
 fn evaluate<T: JsonataData>(expr: &Expr, data: &T) -> Result<T> {
     match expr {
@@ -16,18 +26,10 @@ fn evaluate<T: JsonataData>(expr: &Expr, data: &T) -> Result<T> {
             }
         },
         Expr::Binary(op, lhs, rhs) => {
-            let lhs = match evaluate(lhs, data)?.as_f64() {
-                Some(n) => n,
-                None => return Err(Error::T2001),
-            };
-            let rhs = match evaluate(rhs, data)?.as_f64() {
-                Some(n) => n,
-                None => return Err(Error::T2002),
-            };
             let res = match op {
-                BinaryOperator::Add => lhs + rhs,
+                BinaryOperator::Numeric(op) => evaluteNumericBinary(op, lhs, rhs, data)?,
             };
-            Ok(T::from_f64(res))
+            Ok(res)
         }
     }
 }
@@ -79,22 +81,25 @@ mod tests {
 
     use crate::evaluate;
 
-    use super::{Expr, BinaryOperator, Result};
+    use super::{Expr, BinaryOperator, NumericBinaryOperator, Result};
 
     #[test]
     fn serde_test () -> Result<()> {
         let value = serde_json::json!({
             "x": {"a": 2},
-            "y": 2,
+            "y": {"b": 5},
         });
 
         let expr = Expr::Binary(
-            BinaryOperator::Add,
+            BinaryOperator::Numeric(NumericBinaryOperator::Mult),
             Box::new(Expr::Chain(
                 Box::new(Expr::Field("x".into())),
                 Box::new(Expr::Field("a".into()))
             )),
-            Box::new(Expr::Field("y".into())),
+            Box::new(Expr::Chain(
+                Box::new(Expr::Field("y".into())),
+                Box::new(Expr::Field("b".into()))
+            )),
         );
 
         let result = evaluate(&expr, &value)?;

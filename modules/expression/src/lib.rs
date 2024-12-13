@@ -1,5 +1,10 @@
-pub enum BinaryOperator {
+pub enum NumericBinaryOperator {
     Add,
+    Mult,
+}
+
+pub enum BinaryOperator {
+    Numeric(NumericBinaryOperator)
 }
 
 pub enum Expr {
