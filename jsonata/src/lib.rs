@@ -1,12 +1,16 @@
-use jsonata_expression::{Expression, BinaryOperator, NumericBinaryOperator, Atom};
 use jsonata_error::{Result, Error};
+use jsonata_expression::{Expression, NumericBinaryOperator, Atom};
+use jsonata_parser::Parser;
 
 fn evaluteNumericBinary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expression, rhs: &Expression, data: &T) -> Result<T> {
     let lhs = evaluate(lhs, data)?.as_f64().ok_or(Error::T2001)?;
     let rhs = evaluate(rhs, data)?.as_f64().ok_or(Error::T2002)?;
     let res = match op {
         NumericBinaryOperator::Add => lhs + rhs,
-        NumericBinaryOperator::Mult => lhs * rhs,
+        NumericBinaryOperator::Mul => lhs * rhs,
+        NumericBinaryOperator::Sub => lhs - rhs,
+        NumericBinaryOperator::Div => lhs / rhs,
+        NumericBinaryOperator::Mod => lhs % rhs,
     };
     Ok(T::from_f64(res))
 }
@@ -14,25 +18,37 @@ fn evaluteNumericBinary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expres
 fn evaluate<T: JsonataData>(expr: &Expression, data: &T) -> Result<T> {
     match expr {
         Expression::Atom(Atom::Number(n)) => Ok(T::from_f64(*n)),
-        Expression::Field(field) => {
-            if let Some(value) = data.get_field(field) {
+        Expression::Atom(Atom::Name(n)) => {
+            if let Some(value) = data.get_field(n) {
                 Ok(value) 
             } else {
                 todo!();
             }
         },
-        Expression::Binary(op, lhs, rhs) => {
-            match op {
-                BinaryOperator::Numeric(op) => evaluteNumericBinary(op, lhs, rhs, data),
-                BinaryOperator::Chain => {
-                    let intermediate = evaluate(lhs, data)?;
-                    evaluate(rhs, &intermediate)
-                }
-            }
-        }
+        Expression::Atom(Atom::String(_s)) => todo!(),
+        Expression::Atom(Atom::End) => todo!(),
+        Expression::Path(lhs, rhs) => {
+            let intermediate = evaluate(lhs, data)?;
+            evaluate(rhs, &intermediate)
+        },
+        Expression::BinaryNumeric(op, lhs, rhs) => evaluteNumericBinary(op, lhs, rhs, data),
         Expression::Unary(_op, _lhs) => {
             todo!();
         }
+    }
+}
+
+pub struct Jsonata(Expression);
+
+pub fn jsonata (expr: &str) -> Result<Jsonata> {
+    let parser = Parser::new(expr);
+    let ast = parser.parse()?;
+    Ok(Jsonata(ast))
+}
+
+impl Jsonata {
+    pub fn evaluate<T: JsonataData>(&self, data: &T) -> Result<T> {
+        evaluate(&self.0, &data)
     }
 }
 
@@ -46,6 +62,7 @@ pub trait JsonataData {
     fn from_f64(value: f64) -> Self
         where Self: Sized;
 }
+
 
 impl JsonataData for serde_json::Value {
     fn get_field(&self, field: &str) -> Option<Self>
@@ -63,46 +80,20 @@ impl JsonataData for serde_json::Value {
     }
 }
 
-// pub struct Jsonata(Expression);
-// 
-// pub fn jsonata (expr: &str) -> Result<Jsonata> {
-//     let parser = Parser::new(expr);
-//     let ast = parser.parse()?;
-//     Ok(Jsonata(ast))
-// }
-// 
-// impl Jsonata {
-//     pub fn evaluate(&self, data: serde_json::Value) -> Result<Expression> {
-//         todo!()
-//         //evaluate(self.0.clone())
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
-
-    use crate::evaluate;
-
-    use super::{Expression, BinaryOperator as Binary, NumericBinaryOperator as Numeric, Result, Atom};
+    use jsonata_error::Result;
+    use crate::jsonata;
 
     #[test]
-    fn serde_test () -> Result<()> {
-        // let value: serde_json::Value = serde_json::from_str(r#"{"x": 3, "y": 3}"#).unwrap();
-        let value = serde_json::json!({
+    fn test_jsonata_simple_expression () -> Result<()> {
+        let data = serde_json::json!({
             "y": {"b": 5},
+            "x": {"a": 5},
         });
 
-        // 5 * y.b;
-        let expr = Expression::Binary(
-            Binary::Numeric(Numeric::Mult),
-            Box::new(Expression::Atom(Atom::Number(5.0))),
-            Box::new(Expression::Binary(
-                Binary::Chain,
-                Box::new(Expression::Field("y".into())),
-                Box::new(Expression::Field("b".into()))
-            )),
-        );
-        let result = evaluate(&expr, &value)?;
+        let expression = jsonata("x.a * y.b")?;
+        let result = expression.evaluate(&data)?;
         assert_eq!(result, serde_json::json!(25.0));
         Ok(())
     }

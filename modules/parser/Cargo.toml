@@ -9,3 +9,4 @@ workspace = true
 
 [dependencies]
 jsonata-error = { workspace = true }
+jsonata-expression = { workspace = true }

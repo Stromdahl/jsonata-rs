@@ -1,46 +1,10 @@
 use jsonata_error::Result;
-use crate::Operator;
+use jsonata_expression::{NumericBinaryOperator, NumericUnaryOperator};
+use jsonata_expression::{Expression, Atom};
 use crate::Lexer;
-use crate::Token;
+use crate::token::{Token, Operator};
 
 // https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Atom {
-    Number(f64),
-    String(String),
-    Name(String),
-    End,
-}
-
-impl std::fmt::Display for Atom {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Number(i) => write!(f, "{i}"),
-            Self::Name(n) => write!(f, "{n}"),
-            Self::String(n) => write!(f, "\"{n}\""),
-            Self::End => write!(f, ""),
-        }
-    }
-}
-
-// https://en.wikipedia.org/wiki/S-expression
-#[derive(Clone, Debug, PartialEq)]
-pub enum Expression {
-    Atom(Atom),
-    Binary(Operator, Box<Expression>, Box<Expression>),
-    Unary(Operator, Box<Expression>),
-}
-
-impl std::fmt::Display for Expression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Expression::Atom(i) => write!(f, "{i}"),
-            Expression::Binary(op, lhs, rhs) => write!(f, "({} {} {})", op, lhs, rhs),
-            Expression::Unary(op, lhs) => write!(f, "({} {})", op, lhs),
-        }
-    }
-}
 
 fn prefix_binding_power(op: &Operator) -> ((), u8) {
     match op {
@@ -80,7 +44,7 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> Result<Expression> {
         Token::Operator(op) => {
             let ((), r_bp) = prefix_binding_power(&op);
             let rhs = expr_bp(lexer, r_bp)?;
-            Expression::Unary(op, Box::new(rhs))
+            Expression::Unary(NumericUnaryOperator::Negate, Box::new(rhs))
         }
     };
 
@@ -100,7 +64,18 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> Result<Expression> {
             lexer.next();
 
             let rhs = expr_bp(lexer, r_bp)?;
-            lhs = Expression::Binary(op, Box::new(lhs), Box::new(rhs));
+            lhs = match op {
+                crate::token::Operator::Plus => Expression::BinaryNumeric(NumericBinaryOperator::Add, Box::new(lhs), Box::new(rhs)),
+                crate::token::Operator::Star => Expression::BinaryNumeric(NumericBinaryOperator::Mul, Box::new(lhs), Box::new(rhs)),
+                crate::token::Operator::Minus => Expression::BinaryNumeric(NumericBinaryOperator::Sub, Box::new(lhs), Box::new(rhs)),
+                crate::token::Operator::Slash => Expression::BinaryNumeric(NumericBinaryOperator::Div, Box::new(lhs), Box::new(rhs)),
+                crate::token::Operator::Percentage => Expression::BinaryNumeric(NumericBinaryOperator::Mod, Box::new(lhs), Box::new(rhs)),
+                crate::token::Operator::Dot => Expression::Path(Box::new(lhs), Box::new(rhs)),
+
+                crate::token::Operator::Dollar => todo!(),
+                crate::token::Operator::ParenRight => todo!(),
+                crate::token::Operator::ParenLeft => todo!(),
+            };
             continue;
         }
         break;

@@ -1,11 +1,11 @@
-use jsonata_error::{Error, Result};
+use jsonata_error::Result;
+use jsonata_expression::Expression;
 
 mod lex;
-use lex::{Lexer, Token};
-pub use lex::Operator;
+use lex::Lexer;
 
+mod token;
 mod parse;
-pub use parse::{Expression, Atom};
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
