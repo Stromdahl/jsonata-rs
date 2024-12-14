@@ -1,4 +1,4 @@
-use crate::token::{Token, Operator};
+use crate::token::{Function, Operator, Token};
 use jsonata_error::{Error, Result};
 
 pub struct Lexer<'a> {
@@ -66,10 +66,23 @@ impl<'a> Lexer<'a> {
                 '*' => Ok(Token::Operator(Operator::Star)),
                 '/' => Ok(Token::Operator(Operator::Slash)),
                 '%' => Ok(Token::Operator(Operator::Percentage)),
-                '$' => Ok(Token::Operator(Operator::Dollar)),
                 '.' => Ok(Token::Operator(Operator::Dot)),
                 ')' => Ok(Token::Operator(Operator::ParenRight)),
                 '(' => Ok(Token::Operator(Operator::ParenLeft)),
+
+                '$' => {
+                    let start = self.position;
+                    self.advance_while(|c| c.is_alphanumeric());
+                    let end = self.position;
+                    let text = &self.source[start..end];
+                    let token = match text {
+                        "sum" => Token::Function(Function::Sum),
+                        text => {
+                            Token::Variable(text)
+                        }
+                    };
+                    Ok(token)
+                },
 
                 // string literals
                 '"' => {
@@ -132,7 +145,24 @@ impl<'a> Iterator for Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::token::Function;
+
     use super::{Lexer, Operator, Result, Token};
+
+    #[test]
+    fn test_lex_sum_fn() -> Result<()> {
+        let lexer = Lexer::new("$sum(example.value)");
+        let tokens = lexer.collect::<Result<Vec<Token>>>()?;
+        assert_eq!(tokens, [
+            Token::Function(Function::Sum),
+            Token::Operator(Operator::ParenLeft),
+            Token::Name("example"),
+            Token::Operator(Operator::Dot),
+            Token::Name("value"),
+            Token::Operator(Operator::ParenRight),
+        ]);
+        Ok(())
+    }
 
     #[test]
     fn test_lex_string() -> Result<()> {
@@ -173,8 +203,7 @@ mod tests {
         let lexer = Lexer::new("$price.foo.bar");
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;
         assert_eq!(tokens, [
-            Token::Operator(Operator::Dollar),
-            Token::Name("price"),
+            Token::Variable("price"),
             Token::Operator(Operator::Dot),
             Token::Name("foo"),
             Token::Operator(Operator::Dot),

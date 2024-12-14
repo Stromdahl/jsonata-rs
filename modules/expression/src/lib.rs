@@ -50,12 +50,24 @@ impl std::fmt::Display for NumericUnaryOperator {
     }
 }
 
+pub enum FunctionOperator {
+    Sum,
+}
+
+impl std::fmt::Display for FunctionOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FunctionOperator::Sum => write!(f, "SUM"),
+        }
+    }
+}
 
 pub enum Expression {
     Atom(Atom),
     BinaryNumeric(NumericBinaryOperator, Box<Expression>, Box<Expression>),
     Path(Box<Expression>, Box<Expression>),
     Unary(NumericUnaryOperator, Box<Expression>),
+    Function(FunctionOperator, Box<Expression>),
 }
 
 impl std::fmt::Display for Expression {
@@ -65,6 +77,7 @@ impl std::fmt::Display for Expression {
             Expression::BinaryNumeric(op, lhs, rhs) => write!(f, "({} {} {})", op, lhs, rhs),
             Expression::Path(lhs, rhs) => write!(f, "(. {} {})", lhs, rhs),
             Expression::Unary(op, lhs) => write!(f, "({} {})", op, lhs),
+            Expression::Function(op, lhs) => write!(f, "({} {})", op, lhs),
         }
     }
 }

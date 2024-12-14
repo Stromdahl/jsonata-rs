@@ -2,7 +2,7 @@ use jsonata_error::{Result, Error};
 use jsonata_expression::{Expression, NumericBinaryOperator, Atom};
 use jsonata_parser::Parser;
 
-fn evaluteNumericBinary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expression, rhs: &Expression, data: &T) -> Result<T> {
+fn evalute_numeric_binary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expression, rhs: &Expression, data: &T) -> Result<T> {
     let lhs = evaluate(lhs, data)?.as_f64().ok_or(Error::T2001)?;
     let rhs = evaluate(rhs, data)?.as_f64().ok_or(Error::T2002)?;
     let res = match op {
@@ -31,10 +31,11 @@ fn evaluate<T: JsonataData>(expr: &Expression, data: &T) -> Result<T> {
             let intermediate = evaluate(lhs, data)?;
             evaluate(rhs, &intermediate)
         },
-        Expression::BinaryNumeric(op, lhs, rhs) => evaluteNumericBinary(op, lhs, rhs, data),
+        Expression::BinaryNumeric(op, lhs, rhs) => evalute_numeric_binary(op, lhs, rhs, data),
         Expression::Unary(_op, _lhs) => {
             todo!();
-        }
+        },
+        Expression::Function(_, _) => todo!(),
     }
 }
 
@@ -95,6 +96,24 @@ mod tests {
         let expression = jsonata("x.a * y.b")?;
         let result = expression.evaluate(&data)?;
         assert_eq!(result, serde_json::json!(25.0));
+        Ok(())
+    }
+
+    #[ignore = "sum and array not implemented yet"]
+    #[test]
+    fn test_jsonata_example() -> Result<()> {
+
+        let data = serde_json::json!({
+             "example": [
+                 {"value": 4},
+                 {"value": 7},
+                 {"value": 13}
+             ]
+        });
+        
+        let expression = jsonata("$sum(example.value)")?;
+        let result = expression.evaluate(&data)?;
+        assert_eq!(result, serde_json::json!(24.0));
         Ok(())
     }
 }

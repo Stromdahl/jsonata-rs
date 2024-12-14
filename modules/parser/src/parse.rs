@@ -1,8 +1,8 @@
 use jsonata_error::Result;
-use jsonata_expression::{NumericBinaryOperator, NumericUnaryOperator};
+use jsonata_expression::{FunctionOperator, NumericBinaryOperator, NumericUnaryOperator};
 use jsonata_expression::{Expression, Atom};
 use crate::Lexer;
-use crate::token::{Token, Operator};
+use crate::token::{Function, Operator, Token};
 
 // https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
@@ -32,6 +32,14 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> Result<Expression> {
     let mut lhs = match lhs {
         Token::Number(n) => Expression::Atom(Atom::Number(n)),
         Token::Name(n) => Expression::Atom(Atom::Name(n.to_string())),
+        Token::Variable(_) => todo!(),
+        Token::Function(f) => {
+            let f = match f {
+                    Function::Sum => FunctionOperator::Sum,
+            };
+            let lhs = expr_bp(lexer, 0)?;
+            Expression::Function(f, Box::new(lhs))
+        },
         Token::String(n) => Expression::Atom(Atom::String(n.to_string())),
         Token::Operator(Operator::ParenLeft) => {
             let lhs = expr_bp(lexer, 0)?;
@@ -72,7 +80,6 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> Result<Expression> {
                 crate::token::Operator::Percentage => Expression::BinaryNumeric(NumericBinaryOperator::Mod, Box::new(lhs), Box::new(rhs)),
                 crate::token::Operator::Dot => Expression::Path(Box::new(lhs), Box::new(rhs)),
 
-                crate::token::Operator::Dollar => todo!(),
                 crate::token::Operator::ParenRight => todo!(),
                 crate::token::Operator::ParenLeft => todo!(),
             };
@@ -93,6 +100,13 @@ mod tests {
     use super::parse;
     use crate::Lexer;
     use crate::Result;
+
+    #[test]
+    fn test_parse_sum_expression() -> Result<()> {
+        let r = parse(Lexer::new("$sum(example.value)"))?;
+        assert_eq!(r.to_string(), "(SUM (. example value))");
+        Ok(())
+    }
 
     #[test]
     fn test_parse_parenthesised_expression() -> Result<()> {
