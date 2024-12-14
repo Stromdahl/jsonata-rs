@@ -1,5 +1,5 @@
-use jsonata_error::{Result, Error};
-use jsonata_expression::{Expression, NumericBinaryOperator, Atom};
+pub use jsonata_error::{Result, Error};
+use jsonata_expression::{Atom, Expression, FunctionOperator, NumericBinaryOperator};
 use jsonata_parser::Parser;
 
 fn evalute_numeric_binary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expression, rhs: &Expression, data: &T) -> Result<T> {
@@ -19,23 +19,50 @@ fn evaluate<T: JsonataData>(expr: &Expression, data: &T) -> Result<T> {
     match expr {
         Expression::Atom(Atom::Number(n)) => Ok(T::from_f64(*n)),
         Expression::Atom(Atom::Name(n)) => {
-            if let Some(value) = data.get_field(n) {
-                Ok(value) 
-            } else {
-                todo!();
+            match data.get_field(n) {
+                Some(n) => Ok(n),
+                None => todo!("What should happend here?, on name: {}", n)
             }
         },
         Expression::Atom(Atom::String(_s)) => todo!(),
         Expression::Atom(Atom::End) => todo!(),
         Expression::Path(lhs, rhs) => {
             let intermediate = evaluate(lhs, data)?;
-            evaluate(rhs, &intermediate)
+            if intermediate.is_array() {
+                let results: Vec<T> = intermediate
+                    .as_array()
+                    .unwrap() // todo Handle invalid array extraction
+                    .iter()
+                    .filter_map(|item| evaluate(rhs, item).ok()) // Apply rhs to each item in the array
+                    .collect();
+
+                Ok(T::from_array(results)) // Combine results back into an array
+            } else {
+                evaluate(rhs, &intermediate)
+            }
         },
         Expression::BinaryNumeric(op, lhs, rhs) => evalute_numeric_binary(op, lhs, rhs, data),
         Expression::Unary(_op, _lhs) => {
             todo!();
         },
-        Expression::Function(_, _) => todo!(),
+        Expression::Function(op, lhs) => {
+            match op {
+                FunctionOperator::Sum => {
+                    let values = evaluate(lhs, data)?;
+                    if !values.is_array() {
+                        todo!("return error");
+                    }
+
+                    let sum: f64 = values
+                        .as_array()
+                        .unwrap() // todo!
+                        .into_iter()
+                        .filter_map(|v| v.as_f64())
+                        .sum();
+                    Ok(T::from_f64(sum))
+                },
+            }
+        },
     }
 }
 
@@ -62,6 +89,14 @@ pub trait JsonataData {
 
     fn from_f64(value: f64) -> Self
         where Self: Sized;
+    
+    fn is_array(&self) -> bool;
+
+    fn as_array(&self) -> Option<Vec<Self>>
+        where Self: Sized;
+
+    fn from_array(array: Vec<Self>) -> Self
+        where Self: Sized;
 }
 
 
@@ -78,6 +113,20 @@ impl JsonataData for serde_json::Value {
 
     fn from_f64(value: f64) -> Self where Self: Sized {
         serde_json::json!(value)
+    }
+
+
+    fn is_array(&self) -> bool {
+        self.is_array()
+    }
+
+    fn as_array(&self) -> Option<Vec<Self>>
+        where Self: Sized {
+        self.as_array().cloned()
+    }
+
+    fn from_array(array: Vec<Self>) -> Self {
+        serde_json::json!(array)
     }
 }
 
@@ -99,7 +148,6 @@ mod tests {
         Ok(())
     }
 
-    #[ignore = "sum and array not implemented yet"]
     #[test]
     fn test_jsonata_example() -> Result<()> {
 
