@@ -4,6 +4,16 @@
 
 JSON query and transformation language
 
+Rust port of the [JSONata query and transformation language](http://jsonata.org/).
+
+* [JSONata in 5 minutes](https://www.youtube.com/embed/ZBaK40rtIBM)
+* [JSONata language documentation](http://docs.jsonata.org/)
+* [Try it out!](http://try.jsonata.org/)
+
+## Installation
+
+- TBD
+
 ## Quick start
 
 In Node.js:
@@ -26,3 +36,6 @@ fn main () -> Result<()> {
     Ok(())
 }
 ```
+
+## More information
+- JSONata [documentation](http://docs.jsonata.org/)
