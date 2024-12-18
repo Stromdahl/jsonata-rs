@@ -1,3 +1,5 @@
+use std::default;
+
 pub use jsonata_error::{Result, Error};
 use jsonata_expression::Expression;
 use jsonata_parser::Parser;
@@ -5,24 +7,43 @@ use jsonata_parser::Parser;
 mod evaluate;
 use evaluate::evaluate;
 
+mod environment;
+use environment::{Binding, Environment};
+
 mod data;
 use data::JsonataData;
-
-pub struct Jsonata {
-    ast: Expression,
-}
 
 pub fn jsonata (expr: &str) -> Result<Jsonata> {
     let parser = Parser::new(expr);
     let ast = parser.parse()?;
-    Ok(Jsonata{ast})
+    Ok(Jsonata::new(ast))
+}
+
+
+pub struct Jsonata {
+    ast: Expression,
+    environment: Environment,
 }
 
 impl Jsonata {
+
+    pub fn new (ast: Expression) -> Self {
+        let environment = Environment::new();
+        Jsonata {
+            ast,
+            environment,
+        }
+    }
+
+    pub fn bind(&mut self, name: String, binding: Binding) {
+        self.environment.bind(name, binding);
+    }
+
     pub fn evaluate<T: JsonataData>(&self, data: &T) -> Result<T> {
-        evaluate(&self.ast, &data)
+        evaluate(&self.ast, &data, &self.environment)
     }
 }
+
 
 impl JsonataData for serde_json::Value {
     fn get_field(&self, field: &str) -> Option<Self>
@@ -54,10 +75,22 @@ impl JsonataData for serde_json::Value {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use jsonata_error::Result;
     use crate::jsonata;
+    use crate::environment::{Binding, Value};
+
+
+    #[test]
+    fn test_jsonata_value_bindings () -> Result<()> {
+        let mut expression = jsonata("$a * x")?;
+        expression.bind("a".into(), Binding::Value(Value::Number(5.0)));
+        let result = expression.evaluate(&serde_json::json!({"x": 4.0}))?;
+        assert_eq!(result, serde_json::json!(20.0));
+        Ok(())
+    }
 
     #[test]
     fn test_jsonata_simple_expression () -> Result<()> {

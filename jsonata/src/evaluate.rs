@@ -1,11 +1,13 @@
+use core::num;
+
 use jsonata_expression::{Atom, Expression, FunctionOperator, NumericBinaryOperator};
 use jsonata_error::{Result, Error};
 
-use crate::JsonataData;
+use crate::{environment::{Binding, Environment, Value}, JsonataData};
 
-fn evalute_numeric_binary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expression, rhs: &Expression, data: &T) -> Result<T> {
-    let lhs = evaluate(lhs, data)?.as_f64().ok_or(Error::T2001)?;
-    let rhs = evaluate(rhs, data)?.as_f64().ok_or(Error::T2002)?;
+fn evalute_numeric_binary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expression, rhs: &Expression, data: &T, environment: &Environment) -> Result<T> {
+    let lhs = evaluate(lhs, data, environment)?.as_f64().ok_or(Error::T2001)?;
+    let rhs = evaluate(rhs, data, environment)?.as_f64().ok_or(Error::T2002)?;
     let res = match op {
         NumericBinaryOperator::Add => lhs + rhs,
         NumericBinaryOperator::Mul => lhs * rhs,
@@ -16,7 +18,7 @@ fn evalute_numeric_binary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expr
     Ok(T::from_f64(res))
 }
 
-pub fn evaluate<T: JsonataData>(expr: &Expression, data: &T) -> Result<T> {
+pub fn evaluate<T: JsonataData>(expr: &Expression, data: &T, environment: &Environment) -> Result<T> {
     match expr {
         Expression::Atom(Atom::Number(n)) => Ok(T::from_f64(*n)),
         Expression::Atom(Atom::Name(n)) => {
@@ -28,28 +30,37 @@ pub fn evaluate<T: JsonataData>(expr: &Expression, data: &T) -> Result<T> {
         Expression::Atom(Atom::String(_s)) => todo!(),
         Expression::Atom(Atom::End) => todo!(),
         Expression::Path(lhs, rhs) => {
-            let intermediate = evaluate(lhs, data)?;
+            let intermediate = evaluate(lhs, data, environment)?;
             if intermediate.is_array() {
                 let results: Vec<T> = intermediate
                     .as_array()
                     .unwrap() // todo Handle invalid array extraction
                     .iter()
-                    .filter_map(|item| evaluate(rhs, item).ok()) // Apply rhs to each item in the array
+                    .filter_map(|item| evaluate(rhs, item, environment).ok()) // Apply rhs to each item in the array
                     .collect();
 
                 Ok(T::from_array(results)) // Combine results back into an array
             } else {
-                evaluate(rhs, &intermediate)
+                evaluate(rhs, &intermediate, environment)
             }
         },
-        Expression::BinaryNumeric(op, lhs, rhs) => evalute_numeric_binary(op, lhs, rhs, data),
+        Expression::BinaryNumeric(op, lhs, rhs) => evalute_numeric_binary(op, lhs, rhs, data, environment),
         Expression::Unary(_op, _lhs) => {
             todo!();
+        },
+        Expression::Variable(name) => {
+            if let Some(binding) = environment.lookup(name){ 
+                match binding {
+                    Binding::Value(Value::Number(number)) => Ok(T::from_f64(*number)),
+                }
+            } else {
+                todo!();
+            }
         },
         Expression::Function(op, lhs) => {
             match op {
                 FunctionOperator::Sum => {
-                    let values = evaluate(lhs, data)?;
+                    let values = evaluate(lhs, data, environment)?;
                     if !values.is_array() {
                         todo!("return error");
                     }

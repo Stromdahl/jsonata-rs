@@ -68,6 +68,7 @@ pub enum Expression {
     Path(Box<Expression>, Box<Expression>),
     Unary(NumericUnaryOperator, Box<Expression>),
     Function(FunctionOperator, Box<Expression>),
+    Variable(String),
 }
 
 impl std::fmt::Display for Expression {
@@ -78,6 +79,7 @@ impl std::fmt::Display for Expression {
             Expression::Path(lhs, rhs) => write!(f, "(. {} {})", lhs, rhs),
             Expression::Unary(op, lhs) => write!(f, "({} {})", op, lhs),
             Expression::Function(op, lhs) => write!(f, "({} {})", op, lhs),
+            Expression::Variable(name) => write!(f, "{}", name),
         }
     }
 }

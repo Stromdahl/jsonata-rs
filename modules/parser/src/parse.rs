@@ -32,7 +32,7 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> Result<Expression> {
     let mut lhs = match lhs {
         Token::Number(n) => Expression::Atom(Atom::Number(n)),
         Token::Name(n) => Expression::Atom(Atom::Name(n.to_string())),
-        Token::Variable(_) => todo!(),
+        Token::Variable(name) => Expression::Variable(name.into()),
         Token::Function(f) => {
             let f = match f {
                     Function::Sum => FunctionOperator::Sum,
