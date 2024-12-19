@@ -1,5 +1,3 @@
-use std::default;
-
 pub use jsonata_error::{Result, Error};
 use jsonata_expression::Expression;
 use jsonata_parser::Parser;
@@ -13,19 +11,19 @@ use environment::{Binding, Environment};
 mod data;
 use data::JsonataData;
 
-pub fn jsonata (expr: &str) -> Result<Jsonata> {
+pub fn jsonata<T: JsonataData + Clone> (expr: &str) -> Result<Jsonata<T>> {
     let parser = Parser::new(expr);
     let ast = parser.parse()?;
     Ok(Jsonata::new(ast))
 }
 
 
-pub struct Jsonata {
+pub struct Jsonata<T> {
     ast: Expression,
-    environment: Environment,
+    environment: Environment<T>,
 }
 
-impl Jsonata {
+impl<T: JsonataData + Clone> Jsonata<T> {
 
     pub fn new (ast: Expression) -> Self {
         let environment = Environment::new();
@@ -35,11 +33,11 @@ impl Jsonata {
         }
     }
 
-    pub fn bind(&mut self, name: String, binding: Binding) {
+    pub fn bind(&mut self, name: String, binding: Binding<T>) {
         self.environment.bind(name, binding);
     }
 
-    pub fn evaluate<T: JsonataData>(&self, data: &T) -> Result<T> {
+    pub fn evaluate(&self, data: &T) -> Result<T> {
         evaluate(&self.ast, &data, &self.environment)
     }
 }
@@ -80,13 +78,27 @@ impl JsonataData for serde_json::Value {
 mod tests {
     use jsonata_error::Result;
     use crate::jsonata;
-    use crate::environment::{Binding, Value};
+    use crate::environment::{Binding, Function};
+
+    #[test]
+    fn test_jsonata_function_bindings () -> Result<()> {
+        let func = |_: Vec<serde_json::Value>| -> Result<serde_json::Value> {Ok(serde_json::json!(5.0))};
+
+        // let mut expression = jsonata("$a() * x")?;  todo functions should expect "(args..)"
+        let mut expression = jsonata("$a * x")?;
+        expression.bind("a".into(), Binding::Function(Function {
+            implementation: Box::new(func)
+        }));
+        let result = expression.evaluate(&serde_json::json!({"x": 4.0}))?;
+        assert_eq!(result, serde_json::json!(20.0));
+        Ok(())
+    }
 
 
     #[test]
     fn test_jsonata_value_bindings () -> Result<()> {
         let mut expression = jsonata("$a * x")?;
-        expression.bind("a".into(), Binding::Value(Value::Number(5.0)));
+        expression.bind("a".into(), Binding::Value(serde_json::json!(5.0)));
         let result = expression.evaluate(&serde_json::json!({"x": 4.0}))?;
         assert_eq!(result, serde_json::json!(20.0));
         Ok(())
@@ -98,7 +110,6 @@ mod tests {
             "y": {"b": 5},
             "x": {"a": 5},
         });
-
         let expression = jsonata("x.a * y.b")?;
         let result = expression.evaluate(&data)?;
         assert_eq!(result, serde_json::json!(25.0));

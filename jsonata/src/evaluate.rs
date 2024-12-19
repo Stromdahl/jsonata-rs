@@ -1,11 +1,9 @@
-use core::num;
-
 use jsonata_expression::{Atom, Expression, FunctionOperator, NumericBinaryOperator};
 use jsonata_error::{Result, Error};
 
-use crate::{environment::{Binding, Environment, Value}, JsonataData};
+use crate::{environment::{Binding, Environment, Function}, JsonataData};
 
-fn evalute_numeric_binary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expression, rhs: &Expression, data: &T, environment: &Environment) -> Result<T> {
+fn evalute_numeric_binary<T: JsonataData + Clone>(op: &NumericBinaryOperator, lhs: &Expression, rhs: &Expression, data: &T, environment: &Environment<T>) -> Result<T> {
     let lhs = evaluate(lhs, data, environment)?.as_f64().ok_or(Error::T2001)?;
     let rhs = evaluate(rhs, data, environment)?.as_f64().ok_or(Error::T2002)?;
     let res = match op {
@@ -18,7 +16,7 @@ fn evalute_numeric_binary<T: JsonataData>(op: &NumericBinaryOperator, lhs: &Expr
     Ok(T::from_f64(res))
 }
 
-pub fn evaluate<T: JsonataData>(expr: &Expression, data: &T, environment: &Environment) -> Result<T> {
+pub fn evaluate<T: JsonataData + Clone>(expr: &Expression, data: &T, environment: &Environment<T>) -> Result<T> {
     match expr {
         Expression::Atom(Atom::Number(n)) => Ok(T::from_f64(*n)),
         Expression::Atom(Atom::Name(n)) => {
@@ -51,8 +49,10 @@ pub fn evaluate<T: JsonataData>(expr: &Expression, data: &T, environment: &Envir
         Expression::Variable(name) => {
             if let Some(binding) = environment.lookup(name){ 
                 match binding {
-                    Binding::Value(Value::Number(number)) => Ok(T::from_f64(*number)),
-                }
+                    Binding::Value(value) => Ok(value.clone()),
+                    Binding::Function(Function {implementation: f, ..}) => f(vec![]) // todo, add
+                    // args
+                } 
             } else {
                 todo!();
             }
