@@ -16,7 +16,7 @@ Rust port of the [JSONata query and transformation language](http://jsonata.org/
 
 ## Quick start
 
-In Node.js:
+In jsonata-rs/jsonata `cargo run --example jsonata`
 
 ```rust
 use jsonata::{jsonata, Result};
