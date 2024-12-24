@@ -1,4 +1,4 @@
-use crate::token::{Function, Operator, Token};
+use crate::token::{Operator, Token};
 use jsonata_error::{Error, Result};
 
 pub struct Lexer<'a> {
@@ -51,6 +51,16 @@ impl<'a> Lexer<'a> {
         self.peeked = self.next();
         self.peeked.as_ref()
     }
+    pub fn next_if<F>(&mut self, predicate: F) -> Option<Result<Token>>
+    where 
+        F: Fn(&Token) -> bool,
+    {
+        match self.peek()? {
+            Ok(value) if predicate(value) => self.next(),
+            Ok(_) => None,
+            Err(e) => Some(Err(e.clone())),
+        }
+    }
 
     fn next_token (&mut self) -> Option<Result<Token<'a>>> {
         if let Some(peeked) = self.peeked.take() {
@@ -75,13 +85,7 @@ impl<'a> Lexer<'a> {
                     self.advance_while(|c| c.is_alphanumeric());
                     let end = self.position;
                     let text = &self.source[start..end];
-                    let token = match text {
-                        "sum" => Token::Function(Function::Sum),
-                        text => {
-                            Token::Variable(text)
-                        }
-                    };
-                    Ok(token)
+                    Ok(Token::Variable(text))
                 },
 
                 // string literals
@@ -145,8 +149,6 @@ impl<'a> Iterator for Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::token::Function;
-
     use super::{Lexer, Operator, Result, Token};
 
     #[test]
@@ -154,7 +156,7 @@ mod tests {
         let lexer = Lexer::new("$sum(example.value)");
         let tokens = lexer.collect::<Result<Vec<Token>>>()?;
         assert_eq!(tokens, [
-            Token::Function(Function::Sum),
+            Token::Variable("sum"),
             Token::Operator(Operator::ParenLeft),
             Token::Name("example"),
             Token::Operator(Operator::Dot),

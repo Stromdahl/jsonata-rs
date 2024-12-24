@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Atom {
     Number(f64),
     Name(String),
@@ -17,6 +18,7 @@ impl std::fmt::Display for Atom {
 }
 
 
+#[derive(Debug)]
 pub enum NumericBinaryOperator {
     Add,
     Mul,
@@ -38,6 +40,7 @@ impl std::fmt::Display for NumericBinaryOperator {
 }
 
 
+#[derive(Debug)]
 pub enum NumericUnaryOperator {
     Negate,
 }
@@ -50,25 +53,34 @@ impl std::fmt::Display for NumericUnaryOperator {
     }
 }
 
-pub enum FunctionOperator {
-    Sum,
+#[derive(Debug)]
+pub enum Variable {
+    Value,
+    Function(Vec<Expression>)
 }
 
-impl std::fmt::Display for FunctionOperator {
+impl std::fmt::Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            FunctionOperator::Sum => write!(f, "SUM"),
+            Variable::Value => write!(f, ""),
+            Variable::Function(args) => {
+                let _ = write!(f, "(");
+                for arg in args {
+                    let _ = write!(f, "{arg}");
+                }
+                write!(f, ")")
+            },
         }
     }
 }
 
+#[derive(Debug)]
 pub enum Expression {
     Atom(Atom),
     BinaryNumeric(NumericBinaryOperator, Box<Expression>, Box<Expression>),
     Path(Box<Expression>, Box<Expression>),
     Unary(NumericUnaryOperator, Box<Expression>),
-    Function(FunctionOperator, Box<Expression>),
-    Variable(String),
+    Variable(String, Variable),
 }
 
 impl std::fmt::Display for Expression {
@@ -78,8 +90,7 @@ impl std::fmt::Display for Expression {
             Expression::BinaryNumeric(op, lhs, rhs) => write!(f, "({} {} {})", op, lhs, rhs),
             Expression::Path(lhs, rhs) => write!(f, "(. {} {})", lhs, rhs),
             Expression::Unary(op, lhs) => write!(f, "({} {})", op, lhs),
-            Expression::Function(op, lhs) => write!(f, "({} {})", op, lhs),
-            Expression::Variable(name) => write!(f, "{}", name),
+            Expression::Variable(name, var) => write!(f, "${}{}", name, var),
         }
     }
 }

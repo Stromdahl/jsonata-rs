@@ -1,4 +1,4 @@
-use jsonata_expression::{Atom, Expression, FunctionOperator, NumericBinaryOperator};
+use jsonata_expression::{Atom, Expression, NumericBinaryOperator};
 use jsonata_error::{Result, Error};
 
 use crate::{environment::{Binding, Environment, Function}, JsonataData};
@@ -46,32 +46,27 @@ pub fn evaluate<T: JsonataData + Clone>(expr: &Expression, data: &T, environment
         Expression::Unary(_op, _lhs) => {
             todo!();
         },
-        Expression::Variable(name) => {
-            if let Some(binding) = environment.lookup(name){ 
-                match binding {
-                    Binding::Value(value) => Ok(value.clone()),
-                    Binding::Function(Function {implementation: f, ..}) => f(vec![]) // todo, add
-                    // args
-                } 
-            } else {
-                todo!();
-            }
-        },
-        Expression::Function(op, lhs) => {
-            match op {
-                FunctionOperator::Sum => {
-                    let values = evaluate(lhs, data, environment)?;
-                    if !values.is_array() {
-                        todo!("return error");
+        Expression::Variable(name, variable) => {
+            match variable {
+                jsonata_expression::Variable::Value => {
+                    match environment.lookup(name) {
+                        Some(Binding::Value(value)) => Ok(value.clone()),
+                        Some(Binding::Function(_)) => todo!("??"),
+                        None => todo!("** no match **"),
                     }
-
-                    let sum: f64 = values
-                        .as_array()
-                        .unwrap() // todo!
-                        .into_iter()
-                        .filter_map(|v| v.as_f64())
-                        .sum();
-                    Ok(T::from_f64(sum))
+                },
+                jsonata_expression::Variable::Function(args) => {
+                    match environment.lookup(name) {
+                        Some(Binding::Value(_value)) => todo!("Error: Attempted to invoke a non-function"),
+                        Some(Binding::Function(Function{implementation})) => {
+                            let args: Result<Vec<T>> = args
+                                .iter()
+                                .map(|item| evaluate(item, data, environment))
+                                .collect();
+                            implementation(args?)
+                        },
+                        None => todo!("** no match **"),
+                    }
                 },
             }
         },

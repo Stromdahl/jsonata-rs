@@ -27,17 +27,11 @@ impl std::fmt::Display for Operator {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Function {
-    Sum
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token<'a> {
  Operator(Operator), // todo use enum Operator?
  String(&'a str),
  Name(&'a str), // todo use enum Name?
  Number(f64), // This should be equal to javascript "Number" (IEEE 754-2019 binary64)
  Variable(&'a str), 
- Function(Function)
 }
 

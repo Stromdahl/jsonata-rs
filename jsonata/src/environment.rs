@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 pub struct Function<T> {
     // arity: usize,
+    // pub args: Vec<T>,
     pub implementation: Box<dyn Fn(Vec<T>) -> Result<T>>, 
 }
     

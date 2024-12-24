@@ -1,8 +1,8 @@
 use jsonata_error::Result;
-use jsonata_expression::{FunctionOperator, NumericBinaryOperator, NumericUnaryOperator};
+use jsonata_expression::{NumericBinaryOperator, NumericUnaryOperator, Variable};
 use jsonata_expression::{Expression, Atom};
 use crate::Lexer;
-use crate::token::{Function, Operator, Token};
+use crate::token::{Operator, Token};
 
 // https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
@@ -32,14 +32,28 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> Result<Expression> {
     let mut lhs = match lhs {
         Token::Number(n) => Expression::Atom(Atom::Number(n)),
         Token::Name(n) => Expression::Atom(Atom::Name(n.to_string())),
-        Token::Variable(name) => Expression::Variable(name.into()),
-        Token::Function(f) => {
-            let f = match f {
-                    Function::Sum => FunctionOperator::Sum,
-            };
-            let lhs = expr_bp(lexer, 0)?;
-            Expression::Function(f, Box::new(lhs))
-        },
+        Token::Variable(name) => {
+            if let Some(_) = lexer.next_if(|token| token == &Token::Operator(Operator::ParenLeft)) {
+                let mut  args: Vec<Expression> = vec![];
+                loop {
+                    match lexer.peek().expect("End of file todo: return error") {
+                        Ok(token) => {
+                            if token == &Token::Operator(Operator::ParenRight) {
+                                lexer.next(); // consume left paren
+                                break;
+                            } else {
+                                let arg = expr_bp(lexer, 0)?;
+                                args.push(arg);
+                            }
+                        },
+                        Err(e) => return Err(e.clone()),
+                    }
+                };
+                Expression::Variable(name.to_string(), Variable::Function(args))
+            } else {
+                Expression::Variable(name.to_string(), Variable::Value)
+            }
+        }
         Token::String(n) => Expression::Atom(Atom::String(n.to_string())),
         Token::Operator(Operator::ParenLeft) => {
             let lhs = expr_bp(lexer, 0)?;
@@ -102,9 +116,23 @@ mod tests {
     use crate::Result;
 
     #[test]
-    fn test_parse_sum_expression() -> Result<()> {
-        let r = parse(Lexer::new("$sum(example.value)"))?;
-        assert_eq!(r.to_string(), "(SUM (. example value))");
+    fn test_parse_variable_function_args() -> Result<()> {
+        let r = parse(Lexer::new("$a(a.b)"))?;
+        assert_eq!(r.to_string(), "$a((. a b))");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_variable_function() -> Result<()> {
+        let r = parse(Lexer::new("$a()"))?;
+        assert_eq!(r.to_string(), "$a()");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_variable_value() -> Result<()> {
+        let r = parse(Lexer::new("$a"))?;
+        assert_eq!(r.to_string(), "$a");
         Ok(())
     }
 
